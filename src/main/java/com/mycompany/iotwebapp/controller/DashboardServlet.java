@@ -1,5 +1,7 @@
 package com.mycompany.iotwebapp.controller;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.mycompany.iotwebapp.model.DashboardData;
 import com.mycompany.iotwebapp.model.SensorData;
 import com.mycompany.iotwebapp.service.SensorService;
@@ -10,8 +12,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -26,6 +31,9 @@ public class DashboardServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
     private final transient SensorService service = new SensorService();
+    private final transient Gson gson = new GsonBuilder()
+            .setDateFormat("yyyy-MM-dd HH:mm:ss")
+            .create();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -42,25 +50,46 @@ public class DashboardServlet extends HttpServlet {
             List<SensorData> rawData = service.getRecentData(deviceId, 100);
             System.out.println("[DashboardServlet] Loaded " + rawData.size() + " raw sensor records");
             
-            // Debug: Print raw data
-            for (SensorData sd : rawData) {
-                System.out.println("[DashboardServlet] Raw: sensorTypeId=" + sd.getSensorTypeId() + 
-                                 ", sensorName=" + sd.getSensorName() + 
-                                 ", value=" + sd.getSensorValue() + 
-                                 ", timestamp=" + sd.getTimestamp());
-            }
-            
             // Convert normalized data to dashboard format
             List<DashboardData> dashboardData = convertToDashboardData(rawData);
             System.out.println("[DashboardServlet] Converted to " + dashboardData.size() + " dashboard records");
             
-            // Debug: Print dashboard data
-            for (DashboardData dd : dashboardData) {
-                System.out.println("[DashboardServlet] Dashboard: deviceId=" + dd.getDeviceId() + 
-                                 ", timestamp=" + dd.getTimestamp() + 
-                                 ", values=" + dd.getSensorValues());
+            // Check if JSON format is requested
+            String format = req.getParameter("format");
+            if ("json".equalsIgnoreCase(format)) {
+                // Return JSON response for AJAX requests
+                resp.setContentType("application/json");
+                resp.setCharacterEncoding(StandardCharsets.UTF_8.name());
+                
+                // Convert DashboardData to JSON-serializable format
+                List<Map<String, Object>> jsonData = new ArrayList<>();
+                for (DashboardData dd : dashboardData) {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("deviceId", dd.getDeviceId());
+                    item.put("timestamp", dd.getTimestamp() != null ? 
+                        dd.getTimestamp().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : null);
+                    item.put("temperature", dd.getTemperature());
+                    item.put("humidity", dd.getHumidity());
+                    item.put("mq1", dd.getMq1());
+                    item.put("mq2", dd.getMq2());
+                    item.put("mq3", dd.getMq3());
+                    item.put("dust", dd.getDust());
+                    item.put("wifiSignal", dd.getWifiSignal());
+                    item.put("uptime", dd.getUptime());
+                    jsonData.add(item);
+                }
+                
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("deviceId", deviceId);
+                response.put("data", jsonData);
+                response.put("count", jsonData.size());
+                
+                resp.getWriter().write(gson.toJson(response));
+                return;
             }
             
+            // Default: Render JSP view
             req.setAttribute("deviceId", deviceId);
             req.setAttribute("sensorData", dashboardData);
             req.getRequestDispatcher("/WEB-INF/views/dashboard.jsp").forward(req, resp);
@@ -68,6 +97,20 @@ public class DashboardServlet extends HttpServlet {
         } catch (Exception e) {
             System.err.println("[DashboardServlet] Error loading dashboard data: " + e.getMessage());
             e.printStackTrace();
+            
+            // If JSON format requested, return JSON error
+            String format = req.getParameter("format");
+            if ("json".equalsIgnoreCase(format)) {
+                resp.setContentType("application/json");
+                resp.setCharacterEncoding(StandardCharsets.UTF_8.name());
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("error", e.getMessage());
+                resp.getWriter().write(gson.toJson(error));
+                return;
+            }
+            
             throw new ServletException("Error loading dashboard data", e);
         }
     }

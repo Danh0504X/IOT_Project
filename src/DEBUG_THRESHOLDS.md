@@ -136,3 +136,4 @@ Fetching thresholds from server:
 3. Nếu `settings: {}` → Cài đặt thresholds trên web
 4. Nếu có lỗi → Xem server logs
 
+

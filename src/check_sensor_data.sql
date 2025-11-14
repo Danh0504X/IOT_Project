@@ -29,3 +29,4 @@ SELECT
 FROM DeviceInfo 
 WHERE device_id = 'DEVICE001';
 
+

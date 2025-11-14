@@ -85,3 +85,4 @@ ORDER BY ss.sensor_type_id;
 
 PRINT 'Thresholds check completed!';
 
+

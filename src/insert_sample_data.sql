@@ -115,3 +115,4 @@ GO
 PRINT 'Sample data insertion completed!';
 PRINT 'Run this query to verify: SELECT * FROM SensorData WHERE device_id = ''DEVICE001'' ORDER BY timestamp DESC;';
 
+

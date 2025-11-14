@@ -131,3 +131,4 @@ curl "http://192.168.137.1:8080/IoTWebApp/api/poll?deviceId=DEVICE001"
   - Nếu ESP32 không load được từ server, sẽ dùng giá trị mặc định
   - Code sẽ hiển thị warning "⚠ WARNING: Thresholds not loaded from server yet!"
 
+

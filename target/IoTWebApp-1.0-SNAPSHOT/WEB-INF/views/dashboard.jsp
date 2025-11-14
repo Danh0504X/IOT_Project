@@ -96,7 +96,7 @@
                         </a>
                     </div>
                     <p class="text-secondary text-opacity-75 mb-1">Last update</p>
-                    <h5 class="mb-0">
+                    <h5 class="mb-0" id="last-update-time">
                         <c:choose>
                             <c:when test="${not empty sensorData and not empty sensorData[0].timestamp}">
                                 <fmt:formatDate value="${sensorData[0].timestampAsDate}" pattern="yyyy-MM-dd HH:mm:ss"/>
@@ -104,6 +104,9 @@
                             <c:otherwise>N/A</c:otherwise>
                         </c:choose>
                     </h5>
+                    <small class="text-success text-opacity-75" id="realtime-status" style="display: none;">
+                        <i class="bi bi-circle-fill" style="font-size: 8px; animation: blink 1s infinite;"></i> Real-time
+                    </small>
                 </div>
             </div>
         </div>
@@ -229,32 +232,311 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<c:if test="${not empty sensorData}">
-    <script>
-        const timestamps = [
+
+<!-- Real-time Update Script: Cập nhật dữ liệu trực tiếp mà không cần reload trang -->
+<script>
+    // Cấu hình
+    const REFRESH_INTERVAL = 5000; // 5 giây
+    let climateChart = null;
+    let mqChart = null;
+    let refreshTimer = null;
+    let refreshIndicator = null;
+
+    // CSS cho spinner animation
+    if (!document.getElementById('refresh-styles')) {
+        const style = document.createElement('style');
+        style.id = 'refresh-styles';
+        style.textContent = 
+            '@keyframes spin {' +
+                'from { transform: rotate(0deg); }' +
+                'to { transform: rotate(360deg); }' +
+            '}' +
+            '.spin {' +
+                'animation: spin 1s linear infinite;' +
+                'display: inline-block;' +
+            '}' +
+            '.fade-in {' +
+                'animation: fadeIn 0.3s ease-in;' +
+            '}' +
+            '@keyframes fadeIn {' +
+                'from { opacity: 0; }' +
+                'to { opacity: 1; }' +
+            '}' +
+            '@keyframes blink {' +
+                '0%, 100% { opacity: 1; }' +
+                '50% { opacity: 0.3; }' +
+            '}';
+        document.head.appendChild(style);
+    }
+
+    // Tạo hoặc hiển thị refresh indicator
+    function showRefreshIndicator() {
+        if (!refreshIndicator) {
+            refreshIndicator = document.createElement('div');
+            refreshIndicator.id = 'refresh-indicator';
+            refreshIndicator.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Đang cập nhật...';
+            refreshIndicator.style.cssText = 'position:fixed;top:20px;right:20px;background:rgba(59,130,246,0.9);color:white;padding:10px 20px;border-radius:8px;z-index:9999;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.3);';
+            document.body.appendChild(refreshIndicator);
+        }
+        refreshIndicator.style.display = 'block';
+    }
+
+    function hideRefreshIndicator() {
+        if (refreshIndicator) {
+            refreshIndicator.style.display = 'none';
+        }
+    }
+
+    // Cập nhật timestamp "Last update"
+    function updateLastUpdateTime(timestamp) {
+        const timeElement = document.getElementById('last-update-time');
+        const statusElement = document.getElementById('realtime-status');
+        
+        if (timeElement) {
+            const timeString = timestamp || new Date().toLocaleString('vi-VN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            }).replace(',', '');
+            timeElement.textContent = timestamp || timeString;
+        }
+        
+        // Hiển thị real-time status indicator
+        if (statusElement) {
+            statusElement.style.display = 'inline-block';
+        }
+    }
+
+    // Format số với số chữ số thập phân
+    function formatNumber(value, decimals = 1) {
+        if (value == null || isNaN(value)) return '0';
+        return parseFloat(value).toFixed(decimals);
+    }
+
+    // Cập nhật metric cards
+    function updateMetricCards(data) {
+        if (!data || data.length === 0) return;
+
+        const latest = data[0]; // Dữ liệu mới nhất
+
+        // Temperature card
+        const tempCard = document.querySelector('.metric-card h2.display-6');
+        if (tempCard && latest.temperature != null) {
+            tempCard.innerHTML = formatNumber(latest.temperature) + '<span class="fs-5 fw-semibold"> °C</span>';
+        }
+
+        // Humidity card
+        const humidityCards = document.querySelectorAll('.metric-card');
+        if (humidityCards.length >= 2 && latest.humidity != null) {
+            const humidityCard = humidityCards[1].querySelector('h2.display-6');
+            if (humidityCard) {
+                humidityCard.innerHTML = formatNumber(latest.humidity) + '<span class="fs-5 fw-semibold"> %</span>';
+            }
+        }
+
+        // Air Quality card
+        if (humidityCards.length >= 3 && latest.dust != null) {
+            const dustCard = humidityCards[2].querySelector('h2.display-6');
+            if (dustCard) {
+                dustCard.innerHTML = formatNumber(latest.dust) + '<span class="fs-5 fw-semibold"> µg/m³</span>';
+            }
+        }
+
+        // WiFi Signal card
+        if (humidityCards.length >= 4 && latest.wifiSignal != null) {
+            const wifiCard = humidityCards[3].querySelector('h2.display-6');
+            if (wifiCard) {
+                wifiCard.innerHTML = latest.wifiSignal + '<span class="fs-5 fw-semibold"> dBm</span>';
+            }
+        }
+    }
+
+    // Cập nhật bảng dữ liệu
+    function updateTable(data) {
+        const tbody = document.querySelector('table tbody');
+        if (!tbody || !data || data.length === 0) return;
+
+        // Giới hạn 10 bản ghi mới nhất
+        const recentData = data.slice(0, 10);
+        tbody.innerHTML = '';
+
+        recentData.forEach((item, index) => {
+            const row = document.createElement('tr');
+            row.className = 'fade-in';
+            row.innerHTML = 
+                '<td>' + (index + 1) + '</td>' +
+                '<td><span class="badge bg-primary bg-opacity-25 text-primary">#' + (item.deviceId || 'N/A') + '</span></td>' +
+                '<td>' + formatNumber(item.temperature, 2) + '</td>' +
+                '<td>' + formatNumber(item.humidity, 2) + '</td>' +
+                '<td>' + formatNumber(item.mq1, 0) + '</td>' +
+                '<td>' + formatNumber(item.mq2, 0) + '</td>' +
+                '<td>' + formatNumber(item.mq3, 0) + '</td>' +
+                '<td>' + formatNumber(item.dust, 2) + '</td>' +
+                '<td>' + (item.wifiSignal || 0) + '</td>' +
+                '<td>' + (item.uptime || 0) + '</td>' +
+                '<td>' + (item.timestamp || 'N/A') + '</td>';
+            tbody.appendChild(row);
+        });
+    }
+
+    // Cập nhật biểu đồ
+    function updateCharts(data) {
+        if (!data || data.length === 0) return;
+
+        // Lấy 10 bản ghi gần nhất (đảo ngược để hiển thị từ cũ đến mới)
+        const chartData = data.slice(0, 10).reverse();
+
+        // Chuẩn bị dữ liệu cho biểu đồ
+        const timestamps = chartData.map(item => {
+            if (!item.timestamp) return '';
+            const date = new Date(item.timestamp);
+            return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        });
+        const temps = chartData.map(item => item.temperature || 0);
+        const humidities = chartData.map(item => item.humidity || 0);
+        const mq1Values = chartData.map(item => item.mq1 || 0);
+        const mq2Values = chartData.map(item => item.mq2 || 0);
+        const mq3Values = chartData.map(item => item.mq3 || 0);
+
+        // Cập nhật biểu đồ nhiệt độ & độ ẩm
+        if (climateChart) {
+            climateChart.data.labels = timestamps;
+            climateChart.data.datasets[0].data = temps;
+            climateChart.data.datasets[1].data = humidities;
+            climateChart.update('none'); // 'none' mode để không có animation
+        }
+
+        // Cập nhật biểu đồ radar MQ
+        if (mqChart) {
+            const latest = data[0];
+            const avgMq1 = mq1Values.reduce((a, b) => a + b, 0) / mq1Values.length || 0;
+            const avgMq2 = mq2Values.reduce((a, b) => a + b, 0) / mq2Values.length || 0;
+            const avgMq3 = mq3Values.reduce((a, b) => a + b, 0) / mq3Values.length || 0;
+
+            mqChart.data.datasets[0].data = [
+                latest.mq1 || 0,
+                latest.mq2 || 0,
+                latest.mq3 || 0
+            ];
+            mqChart.data.datasets[1].data = [avgMq1, avgMq2, avgMq3];
+            mqChart.update('none');
+        }
+    }
+
+    // Fetch dữ liệu từ API
+    async function fetchDashboardData() {
+        try {
+            console.log('[Dashboard] Fetching data...');
+            showRefreshIndicator();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const deviceId = urlParams.get('deviceId') || 'DEVICE001';
+            const timestamp = new Date().getTime();
+            
+            // Đảm bảo sử dụng đúng path (có thể có contextPath)
+            let apiPath = window.location.pathname;
+            const apiUrl = apiPath + '?deviceId=' + encodeURIComponent(deviceId) + '&format=json&_t=' + timestamp;
+            
+            console.log('[Dashboard] Fetching from:', apiUrl);
+
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                },
+                credentials: 'same-origin' // Đảm bảo gửi cookies/session
+            });
+
+            console.log('[Dashboard] Response status:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[Dashboard] HTTP error response:', errorText);
+                throw new Error('HTTP error! status: ' + response.status + ', body: ' + errorText);
+            }
+
+            const result = await response.json();
+            console.log('[Dashboard] Received data:', result);
+
+            if (result.success && result.data && result.data.length > 0) {
+                console.log('[Dashboard] Updating UI with', result.data.length, 'records');
+                
+                // Cập nhật UI với dữ liệu mới
+                updateMetricCards(result.data);
+                updateTable(result.data);
+                updateCharts(result.data);
+
+                // Cập nhật timestamp
+                if (result.data[0].timestamp) {
+                    updateLastUpdateTime(result.data[0].timestamp);
+                }
+
+                // Ẩn thông báo "No data"
+                const noDataDiv = document.querySelector('.text-center.py-5');
+                if (noDataDiv) {
+                    noDataDiv.style.display = 'none';
+                }
+
+                // Hiển thị các phần tử dữ liệu nếu chúng bị ẩn
+                const dataSections = document.querySelectorAll('[id="data-sections"]');
+                document.querySelectorAll('.row.g-4, .glass-card').forEach(el => {
+                    el.style.display = '';
+                });
+                
+                console.log('[Dashboard] UI updated successfully');
+            } else {
+                console.warn('[Dashboard] No data available or invalid response:', result);
+            }
+        } catch (error) {
+            console.error('[Dashboard] Error fetching dashboard data:', error);
+            console.error('[Dashboard] Error details:', error.message, error.stack);
+        } finally {
+            hideRefreshIndicator();
+        }
+    }
+
+    // Khởi tạo charts và lưu tham chiếu
+    function initializeCharts() {
+        // Lấy dữ liệu ban đầu từ JSP hoặc khởi tạo với mảng rỗng
+        let timestamps = [];
+        let temps = [];
+        let humidities = [];
+        let mq1 = [];
+        let mq2 = [];
+        let mq3 = [];
+
+        <c:if test="${not empty sensorData}">
+        timestamps = [
             <c:forEach var="item" items="${sensorData}" varStatus="loop">
                 "<fmt:formatDate value='${item.timestampAsDate}' pattern='HH:mm:ss'/>'"<c:if test="${!loop.last}">,</c:if>
             </c:forEach>
         ].reverse();
-        const temps = [
+        temps = [
             <c:forEach var="item" items="${sensorData}" varStatus="loop">${item.temperature}<c:if test="${!loop.last}">,</c:if></c:forEach>
         ].reverse();
-        const humidities = [
+        humidities = [
             <c:forEach var="item" items="${sensorData}" varStatus="loop">${item.humidity}<c:if test="${!loop.last}">,</c:if></c:forEach>
         ].reverse();
-        const mq1 = [
+        mq1 = [
             <c:forEach var="item" items="${sensorData}" varStatus="loop">${item.mq1}<c:if test="${!loop.last}">,</c:if></c:forEach>
         ].reverse();
-        const mq2 = [
+        mq2 = [
             <c:forEach var="item" items="${sensorData}" varStatus="loop">${item.mq2}<c:if test="${!loop.last}">,</c:if></c:forEach>
         ].reverse();
-        const mq3 = [
+        mq3 = [
             <c:forEach var="item" items="${sensorData}" varStatus="loop">${item.mq3}<c:if test="${!loop.last}">,</c:if></c:forEach>
         ].reverse();
+        </c:if>
 
         const chartOptions = {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false, // Tắt animation để update mượt hơn
             plugins: {
                 legend: {
                     labels: { color: '#e2e8f0' }
@@ -272,16 +554,17 @@
             }
         };
 
+        // Khởi tạo biểu đồ nhiệt độ & độ ẩm
         const climateCtx = document.getElementById('climateChart');
-        if (climateCtx) {
-            new Chart(climateCtx, {
+        if (climateCtx && !climateChart) {
+            climateChart = new Chart(climateCtx, {
                 type: 'line',
                 data: {
-                    labels: timestamps,
+                    labels: timestamps.length > 0 ? timestamps : [''],
                     datasets: [
                         {
                             label: 'Temperature (°C)',
-                            data: temps,
+                            data: temps.length > 0 ? temps : [0],
                             borderColor: '#f97316',
                             backgroundColor: 'rgba(249, 115, 22, 0.35)',
                             tension: 0.4,
@@ -289,7 +572,7 @@
                         },
                         {
                             label: 'Humidity (%)',
-                            data: humidities,
+                            data: humidities.length > 0 ? humidities : [0],
                             borderColor: '#38bdf8',
                             backgroundColor: 'rgba(56, 189, 248, 0.35)',
                             tension: 0.4,
@@ -301,27 +584,31 @@
             });
         }
 
+        // Khởi tạo biểu đồ radar MQ
         const mqCtx = document.getElementById('mqChart');
-        if (mqCtx) {
-            new Chart(mqCtx, {
+        if (mqCtx && !mqChart) {
+            const latestMq1 = mq1.length > 0 ? mq1[mq1.length - 1] : 0;
+            const latestMq2 = mq2.length > 0 ? mq2[mq2.length - 1] : 0;
+            const latestMq3 = mq3.length > 0 ? mq3[mq3.length - 1] : 0;
+            const avgMq1 = mq1.length > 0 ? mq1.reduce((a, b) => a + b, 0) / mq1.length : 0;
+            const avgMq2 = mq2.length > 0 ? mq2.reduce((a, b) => a + b, 0) / mq2.length : 0;
+            const avgMq3 = mq3.length > 0 ? mq3.reduce((a, b) => a + b, 0) / mq3.length : 0;
+
+            mqChart = new Chart(mqCtx, {
                 type: 'radar',
                 data: {
                     labels: ['MQ1', 'MQ2', 'MQ3'],
                     datasets: [
                         {
                             label: 'Latest Reading',
-                            data: [mq1[mq1.length - 1], mq2[mq2.length - 1], mq3[mq3.length - 1]],
+                            data: [latestMq1, latestMq2, latestMq3],
                             borderColor: '#a855f7',
                             backgroundColor: 'rgba(168, 85, 247, 0.35)',
                             borderWidth: 2
                         },
                         {
                             label: 'Average (last 10)',
-                            data: [
-                                mq1.reduce((a, b) => a + b, 0) / mq1.length,
-                                mq2.reduce((a, b) => a + b, 0) / mq2.length,
-                                mq3.reduce((a, b) => a + b, 0) / mq3.length
-                            ],
+                            data: [avgMq1, avgMq2, avgMq3],
                             borderColor: '#22d3ee',
                             backgroundColor: 'rgba(34, 211, 238, 0.25)',
                             borderWidth: 2
@@ -330,6 +617,7 @@
                 },
                 options: {
                     responsive: true,
+                    animation: false,
                     plugins: {
                         legend: {
                             labels: { color: '#e2e8f0' }
@@ -346,122 +634,75 @@
                 }
             });
         }
-    </script>
-</c:if>
+    }
 
-<!-- Auto-refresh script: Tự động reload dashboard mỗi 5 giây để cập nhật dữ liệu real-time từ ESP32 -->
-<script>
-    // Auto-refresh dashboard mỗi 5 giây (5000ms)
-    const REFRESH_INTERVAL = 5000; // 5 giây
-    
-    // Cập nhật "Last update" timestamp
-    function updateLastUpdateTime() {
-        const now = new Date();
-        const timeString = now.toLocaleString('vi-VN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
+    // Bắt đầu real-time updates
+    function startRealTimeUpdates() {
+        console.log('[Dashboard] Starting real-time updates...');
         
-        // Tìm element "Last update" và cập nhật
-        const lastUpdateElements = document.querySelectorAll('*');
-        for (let elem of lastUpdateElements) {
-            if (elem.textContent && elem.textContent.includes('Last update')) {
-                const parent = elem.closest('.d-flex, .text-end, span');
-                if (parent) {
-                    // Tìm phần N/A hoặc timestamp cũ và thay thế
-                    const text = parent.textContent;
-                    if (text.includes('N/A') || text.match(/\d{4}-\d{2}-\d{2}/)) {
-                        parent.innerHTML = parent.innerHTML.replace(
-                            /(Last update[:\s]*)(N/A|[\d\s:-]+)/i,
-                            `Last update: ${timeString}`
-                        );
-                    }
-                }
-            }
+        // Kiểm tra xem Chart.js đã load chưa
+        if (typeof Chart === 'undefined') {
+            console.error('[Dashboard] Chart.js not loaded! Waiting...');
+            setTimeout(startRealTimeUpdates, 100);
+            return;
         }
-    }
-    
-    // Thêm indicator khi đang refresh
-    let refreshIndicator = null;
-    function showRefreshIndicator() {
-        if (!refreshIndicator) {
-            refreshIndicator = document.createElement('div');
-            refreshIndicator.id = 'refresh-indicator';
-            refreshIndicator.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Đang cập nhật...';
-            refreshIndicator.style.cssText = 'position:fixed;top:20px;right:20px;background:rgba(59,130,246,0.9);color:white;padding:10px 20px;border-radius:8px;z-index:9999;font-size:14px;';
-            document.body.appendChild(refreshIndicator);
-        }
-        refreshIndicator.style.display = 'block';
-    }
-    
-    function hideRefreshIndicator() {
-        if (refreshIndicator) {
-            refreshIndicator.style.display = 'none';
-        }
-    }
-    
-    // CSS cho spinner animation
-    if (!document.getElementById('refresh-styles')) {
-        const style = document.createElement('style');
-        style.id = 'refresh-styles';
-        style.textContent = `
-            @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-            .spin {
-                animation: spin 1s linear infinite;
-                display: inline-block;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-    
-    // Bắt đầu auto-refresh
-    let refreshTimer = null;
-    
-    function startAutoRefresh() {
-        // Cập nhật timestamp lần đầu
-        updateLastUpdateTime();
         
-        // Set interval để tự động reload
-        refreshTimer = setInterval(function() {
-            showRefreshIndicator();
-            
-            // Reload trang sau 500ms để hiển thị indicator
-            setTimeout(function() {
-                // Lấy deviceId từ URL hoặc từ form
-                const urlParams = new URLSearchParams(window.location.search);
-                const deviceId = urlParams.get('deviceId') || 'DEVICE001';
-                
-                // Reload với deviceId
-                window.location.href = window.location.pathname + '?deviceId=' + deviceId + '&_t=' + new Date().getTime();
-            }, 300);
-        }, REFRESH_INTERVAL);
-    }
-    
-    // Dừng auto-refresh khi user rời khỏi trang
-    window.addEventListener('beforeunload', function() {
+        // Khởi tạo charts
+        try {
+            initializeCharts();
+            console.log('[Dashboard] Charts initialized');
+        } catch (error) {
+            console.error('[Dashboard] Error initializing charts:', error);
+        }
+
+        // Fetch dữ liệu lần đầu sau một chút delay để đảm bảo DOM đã sẵn sàng
+        setTimeout(function() {
+            console.log('[Dashboard] Starting first fetch...');
+            fetchDashboardData();
+        }, 500);
+
+        // Set interval để fetch dữ liệu định kỳ
         if (refreshTimer) {
             clearInterval(refreshTimer);
         }
-    });
-    
-    // Bắt đầu auto-refresh khi trang load xong
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', startAutoRefresh);
-    } else {
-        startAutoRefresh();
+        refreshTimer = setInterval(function() {
+            console.log('[Dashboard] Scheduled fetch triggered');
+            fetchDashboardData();
+        }, REFRESH_INTERVAL);
+
+        console.log('[Dashboard] Real-time updates enabled: Dashboard will update every ' + (REFRESH_INTERVAL/1000) + ' seconds');
     }
-    
-    // Cập nhật timestamp mỗi giây
-    setInterval(updateLastUpdateTime, 1000);
-    
-    console.log('Auto-refresh enabled: Dashboard will refresh every ' + (REFRESH_INTERVAL/1000) + ' seconds');
+
+    // Dừng updates khi user rời khỏi trang
+    window.addEventListener('beforeunload', function() {
+        console.log('[Dashboard] Page unloading, stopping updates');
+        if (refreshTimer) {
+            clearInterval(refreshTimer);
+            refreshTimer = null;
+        }
+    });
+
+    // Khởi động khi trang load xong - sử dụng nhiều phương pháp để đảm bảo
+    function initDashboard() {
+        if (document.readyState === 'loading') {
+            console.log('[Dashboard] Document still loading, waiting for DOMContentLoaded');
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('[Dashboard] DOMContentLoaded fired');
+                startRealTimeUpdates();
+            });
+        } else {
+            console.log('[Dashboard] Document already loaded, starting immediately');
+            // Đảm bảo DOM đã sẵn sàng
+            if (document.body) {
+                startRealTimeUpdates();
+            } else {
+                setTimeout(startRealTimeUpdates, 100);
+            }
+        }
+    }
+
+    // Bắt đầu khởi tạo
+    initDashboard();
 </script>
 </body>
 </html>
