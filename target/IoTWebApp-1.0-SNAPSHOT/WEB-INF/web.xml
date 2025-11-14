@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0">
+
+    <display-name>IoT Web App</display-name>
+
+    <session-config>
+        <session-timeout>30</session-timeout>
+    </session-config>
+
+    <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+    </welcome-file-list>
+
+    <!-- Note: Servlets are configured using @WebServlet annotations -->
+    <!-- 
+        Available endpoints:
+        - POST /api/data - DataServlet - Receive sensor data from ESP32
+        - GET /api/poll - PollServlet - ESP32 polls for threshold updates
+        - GET /admin/thresholds - ThresholdAdminServlet - Display threshold management UI
+        - POST /admin/thresholds - ThresholdAdminServlet - Update thresholds
+    -->
+
+</web-app>
+
