@@ -88,6 +88,9 @@
                 <div class="text-end">
                     <div class="mb-2">
                         <span class="text-secondary text-opacity-75 me-2">👤 ${sessionScope.fullName != null ? sessionScope.fullName : sessionScope.username}</span>
+                        <a href="${pageContext.request.contextPath}/admin/thresholds?deviceId=${param.deviceId != null ? param.deviceId : 'DEVICE001'}" class="btn btn-sm btn-outline-primary me-2">
+                            <i class="bi bi-sliders"></i> Cài đặt ngưỡng
+                        </a>
                         <a href="${pageContext.request.contextPath}/logout" class="btn btn-sm btn-outline-danger">
                             <i class="bi bi-box-arrow-right"></i> Đăng xuất
                         </a>

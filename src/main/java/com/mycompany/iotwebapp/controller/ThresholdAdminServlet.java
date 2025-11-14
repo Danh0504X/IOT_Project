@@ -66,9 +66,10 @@ public class ThresholdAdminServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String deviceId = "DEVICE001";
         try {
             // Get deviceId from form
-            String deviceId = req.getParameter("deviceId");
+            deviceId = req.getParameter("deviceId");
             if (deviceId == null || deviceId.isEmpty()) {
                 deviceId = "DEVICE001";
             }
@@ -81,22 +82,41 @@ public class ThresholdAdminServlet extends HttpServlet {
             for (String sensorName : sensorNames) {
                 String valueParam = req.getParameter(sensorName);
                 if (valueParam != null && !valueParam.isEmpty()) {
-                    Double value = Double.parseDouble(valueParam);
-                    thresholds.put(sensorName, value);
+                    try {
+                        Double value = Double.parseDouble(valueParam);
+                        thresholds.put(sensorName, value);
+                        System.out.println("[ThresholdAdminServlet] Parsed threshold: " + sensorName + " = " + value);
+                    } catch (NumberFormatException e) {
+                        System.err.println("[ThresholdAdminServlet] Invalid number format for " + sensorName + ": " + valueParam);
+                        // Continue with other sensors
+                    }
                 }
             }
 
+            if (thresholds.isEmpty()) {
+                System.err.println("[ThresholdAdminServlet] No valid threshold values provided");
+                resp.sendRedirect(req.getContextPath() + "/admin/thresholds?deviceId=" + deviceId + "&message=error");
+                return;
+            }
+
+            System.out.println("[ThresholdAdminServlet] Updating " + thresholds.size() + " thresholds for device: " + deviceId);
+            
             // Update thresholds in database
             service.updateThresholds(deviceId, thresholds);
+
+            System.out.println("[ThresholdAdminServlet] Successfully updated thresholds for device: " + deviceId);
 
             // Redirect with success message
             resp.sendRedirect(req.getContextPath() + "/admin/thresholds?deviceId=" + deviceId + "&message=success");
             
         } catch (NumberFormatException e) {
-            // Redirect with error message
-            resp.sendRedirect(req.getContextPath() + "/admin/thresholds?message=error");
+            System.err.println("[ThresholdAdminServlet] Number format error: " + e.getMessage());
+            e.printStackTrace();
+            resp.sendRedirect(req.getContextPath() + "/admin/thresholds?deviceId=" + deviceId + "&message=error");
         } catch (Exception e) {
-            throw new ServletException("Error updating thresholds", e);
+            System.err.println("[ThresholdAdminServlet] Error updating thresholds: " + e.getMessage());
+            e.printStackTrace();
+            resp.sendRedirect(req.getContextPath() + "/admin/thresholds?deviceId=" + deviceId + "&message=error");
         }
     }
 }

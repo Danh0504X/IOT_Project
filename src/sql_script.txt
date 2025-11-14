@@ -1,0 +1,261 @@
+USE [IOT_DB]
+GO
+/****** Object:  Table [dbo].[DeviceCommand]    Script Date: 11/14/2025 6:18:13 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[DeviceCommand](
+	[id] [bigint] IDENTITY(1,1) NOT NULL,
+	[device_id] [varchar](64) NOT NULL,
+	[command_type] [varchar](64) NOT NULL,
+	[command_value] [varchar](64) NOT NULL,
+	[status] [varchar](16) NOT NULL,
+	[issued_at] [datetime2](7) NOT NULL,
+	[executed_at] [datetime2](7) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[DeviceInfo]    Script Date: 11/14/2025 6:18:13 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[DeviceInfo](
+	[device_id] [varchar](64) NOT NULL,
+	[device_name] [nvarchar](128) NOT NULL,
+	[status] [varchar](16) NOT NULL,
+	[install_date] [datetime2](7) NULL,
+	[latitude] [float] NULL,
+	[longitude] [float] NULL,
+	[created_at] [datetime2](7) NOT NULL,
+	[updated_at] [datetime2](7) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[device_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[DeviceSensor]    Script Date: 11/14/2025 6:18:13 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[DeviceSensor](
+	[device_id] [varchar](64) NOT NULL,
+	[sensor_type_id] [int] NOT NULL,
+	[sensor_index] [int] NOT NULL,
+	[is_active] [bit] NOT NULL,
+	[installed_at] [datetime2](7) NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[device_id] ASC,
+	[sensor_type_id] ASC,
+	[sensor_index] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[SensorData]    Script Date: 11/14/2025 6:18:13 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[SensorData](
+	[id] [bigint] IDENTITY(1,1) NOT NULL,
+	[device_id] [varchar](64) NOT NULL,
+	[sensor_type_id] [int] NOT NULL,
+	[sensor_index] [int] NOT NULL,
+	[ts] [datetime2](7) NOT NULL,
+	[value] [float] NOT NULL,
+	[is_validated] [bit] NOT NULL,
+	[created_at] [datetime2](7) NOT NULL,
+	[sensor_value] [float] NOT NULL,
+	[timestamp] [datetime] NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[SensorDataAggregated]    Script Date: 11/14/2025 6:18:13 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[SensorDataAggregated](
+	[id] [bigint] IDENTITY(1,1) NOT NULL,
+	[device_id] [varchar](64) NOT NULL,
+	[sensor_type_id] [int] NOT NULL,
+	[aggregation_period] [varchar](16) NOT NULL,
+	[period_start] [datetime2](7) NOT NULL,
+	[period_end] [datetime2](7) NOT NULL,
+	[avg_value] [float] NOT NULL,
+	[created_at] [datetime2](7) NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[SensorSettings]    Script Date: 11/14/2025 6:18:13 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[SensorSettings](
+	[id] [bigint] IDENTITY(1,1) NOT NULL,
+	[device_id] [varchar](64) NOT NULL,
+	[sensor_type_id] [int] NOT NULL,
+	[sensitivity] [float] NOT NULL,
+	[calibration_factor] [float] NULL,
+	[threshold_value] [float] NULL,
+	[updated_at] [datetime2](7) NOT NULL,
+	[created_at] [datetime2](7) NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[SensorType]    Script Date: 11/14/2025 6:18:13 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[SensorType](
+	[sensor_type_id] [int] IDENTITY(1,1) NOT NULL,
+	[sensor_code] [varchar](32) NOT NULL,
+	[name] [nvarchar](128) NOT NULL,
+	[unit] [varchar](20) NULL,
+	[data_type] [varchar](16) NOT NULL,
+	[is_active] [bit] NOT NULL,
+	[created_at] [datetime2](7) NOT NULL,
+	[updated_at] [datetime2](7) NULL,
+	[description] [varchar](255) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[sensor_type_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+INSERT [dbo].[DeviceInfo] ([device_id], [device_name], [status], [install_date], [latitude], [longitude], [created_at], [updated_at]) VALUES (N'DEVICE001', N'Test Device 001', N'ACTIVE', NULL, NULL, NULL, CAST(N'2025-11-14T10:43:28.1366667' AS DateTime2), NULL)
+GO
+INSERT [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index], [is_active], [installed_at]) VALUES (N'DEVICE001', 1, 0, 1, CAST(N'2025-11-14T10:43:58.2100000' AS DateTime2))
+INSERT [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index], [is_active], [installed_at]) VALUES (N'DEVICE001', 2, 0, 1, CAST(N'2025-11-14T10:43:58.2100000' AS DateTime2))
+INSERT [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index], [is_active], [installed_at]) VALUES (N'DEVICE001', 3, 0, 1, CAST(N'2025-11-14T10:43:58.2100000' AS DateTime2))
+INSERT [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index], [is_active], [installed_at]) VALUES (N'DEVICE001', 4, 0, 1, CAST(N'2025-11-14T10:43:58.2100000' AS DateTime2))
+INSERT [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index], [is_active], [installed_at]) VALUES (N'DEVICE001', 5, 0, 1, CAST(N'2025-11-14T10:43:58.2100000' AS DateTime2))
+INSERT [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index], [is_active], [installed_at]) VALUES (N'DEVICE001', 6, 0, 1, CAST(N'2025-11-14T10:43:58.2100000' AS DateTime2))
+GO
+SET IDENTITY_INSERT [dbo].[SensorData] ON 
+
+INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (8, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 25.1, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 25.1, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
+INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (9, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:55:44.4300000' AS DateTime2), 25.4, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 25.4, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
+INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (10, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:54:44.4300000' AS DateTime2), 25.8, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 25.8, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
+INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (11, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:53:44.4300000' AS DateTime2), 26.2, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 26.2, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
+INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (12, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:52:44.4300000' AS DateTime2), 26.5, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 26.5, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
+INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (13, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:51:44.4300000' AS DateTime2), 26.9, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 26.9, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
+INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (14, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:50:44.4300000' AS DateTime2), 27.3, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 27.3, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
+INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (15, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:49:44.4300000' AS DateTime2), 27.6, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 27.6, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
+INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (16, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:48:44.4300000' AS DateTime2), 28.1, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 28.1, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
+INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (17, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:47:44.4300000' AS DateTime2), 28.4, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 28.4, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
+SET IDENTITY_INSERT [dbo].[SensorData] OFF
+GO
+SET IDENTITY_INSERT [dbo].[SensorType] ON 
+
+INSERT [dbo].[SensorType] ([sensor_type_id], [sensor_code], [name], [unit], [data_type], [is_active], [created_at], [updated_at], [description]) VALUES (1, N'TEMP', N'Temperature', N'°C', N'FLOAT', 1, CAST(N'2025-11-14T10:43:49.6633333' AS DateTime2), NULL, NULL)
+INSERT [dbo].[SensorType] ([sensor_type_id], [sensor_code], [name], [unit], [data_type], [is_active], [created_at], [updated_at], [description]) VALUES (2, N'HUM', N'Humidity', N'%', N'FLOAT', 1, CAST(N'2025-11-14T10:43:49.6633333' AS DateTime2), NULL, NULL)
+INSERT [dbo].[SensorType] ([sensor_type_id], [sensor_code], [name], [unit], [data_type], [is_active], [created_at], [updated_at], [description]) VALUES (3, N'MQ1', N'Gas MQ1', N'ppm', N'FLOAT', 1, CAST(N'2025-11-14T10:43:49.6633333' AS DateTime2), NULL, NULL)
+INSERT [dbo].[SensorType] ([sensor_type_id], [sensor_code], [name], [unit], [data_type], [is_active], [created_at], [updated_at], [description]) VALUES (4, N'MQ2', N'Gas MQ2', N'ppm', N'FLOAT', 1, CAST(N'2025-11-14T10:43:49.6633333' AS DateTime2), NULL, NULL)
+INSERT [dbo].[SensorType] ([sensor_type_id], [sensor_code], [name], [unit], [data_type], [is_active], [created_at], [updated_at], [description]) VALUES (5, N'MQ3', N'Gas MQ3', N'ppm', N'FLOAT', 1, CAST(N'2025-11-14T10:43:49.6633333' AS DateTime2), NULL, NULL)
+INSERT [dbo].[SensorType] ([sensor_type_id], [sensor_code], [name], [unit], [data_type], [is_active], [created_at], [updated_at], [description]) VALUES (6, N'DUST', N'Dust Density', N'µg/m³', N'FLOAT', 1, CAST(N'2025-11-14T10:43:49.6633333' AS DateTime2), NULL, NULL)
+SET IDENTITY_INSERT [dbo].[SensorType] OFF
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [UQ__SensorTy__26193D80DA0C2B9A]    Script Date: 11/14/2025 6:18:13 PM ******/
+ALTER TABLE [dbo].[SensorType] ADD UNIQUE NONCLUSTERED 
+(
+	[sensor_code] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[DeviceCommand] ADD  DEFAULT ('PENDING') FOR [status]
+GO
+ALTER TABLE [dbo].[DeviceCommand] ADD  DEFAULT (getutcdate()) FOR [issued_at]
+GO
+ALTER TABLE [dbo].[DeviceInfo] ADD  DEFAULT ('ACTIVE') FOR [status]
+GO
+ALTER TABLE [dbo].[DeviceInfo] ADD  DEFAULT (getutcdate()) FOR [created_at]
+GO
+ALTER TABLE [dbo].[DeviceSensor] ADD  DEFAULT ((0)) FOR [sensor_index]
+GO
+ALTER TABLE [dbo].[DeviceSensor] ADD  DEFAULT ((1)) FOR [is_active]
+GO
+ALTER TABLE [dbo].[DeviceSensor] ADD  DEFAULT (getutcdate()) FOR [installed_at]
+GO
+ALTER TABLE [dbo].[SensorData] ADD  DEFAULT ((0)) FOR [sensor_index]
+GO
+ALTER TABLE [dbo].[SensorData] ADD  DEFAULT ((0)) FOR [is_validated]
+GO
+ALTER TABLE [dbo].[SensorData] ADD  DEFAULT (getutcdate()) FOR [created_at]
+GO
+ALTER TABLE [dbo].[SensorData] ADD  DEFAULT (getdate()) FOR [timestamp]
+GO
+ALTER TABLE [dbo].[SensorDataAggregated] ADD  DEFAULT (getutcdate()) FOR [created_at]
+GO
+ALTER TABLE [dbo].[SensorSettings] ADD  DEFAULT (getutcdate()) FOR [updated_at]
+GO
+ALTER TABLE [dbo].[SensorSettings] ADD  DEFAULT (getutcdate()) FOR [created_at]
+GO
+ALTER TABLE [dbo].[SensorType] ADD  DEFAULT ('FLOAT') FOR [data_type]
+GO
+ALTER TABLE [dbo].[SensorType] ADD  DEFAULT ((1)) FOR [is_active]
+GO
+ALTER TABLE [dbo].[SensorType] ADD  DEFAULT (getutcdate()) FOR [created_at]
+GO
+ALTER TABLE [dbo].[DeviceCommand]  WITH CHECK ADD FOREIGN KEY([device_id])
+REFERENCES [dbo].[DeviceInfo] ([device_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[DeviceSensor]  WITH CHECK ADD FOREIGN KEY([device_id])
+REFERENCES [dbo].[DeviceInfo] ([device_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[DeviceSensor]  WITH CHECK ADD FOREIGN KEY([sensor_type_id])
+REFERENCES [dbo].[SensorType] ([sensor_type_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[SensorData]  WITH CHECK ADD FOREIGN KEY([device_id])
+REFERENCES [dbo].[DeviceInfo] ([device_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[SensorData]  WITH CHECK ADD FOREIGN KEY([sensor_type_id])
+REFERENCES [dbo].[SensorType] ([sensor_type_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[SensorData]  WITH CHECK ADD FOREIGN KEY([device_id], [sensor_type_id], [sensor_index])
+REFERENCES [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index])
+GO
+ALTER TABLE [dbo].[SensorDataAggregated]  WITH CHECK ADD FOREIGN KEY([device_id])
+REFERENCES [dbo].[DeviceInfo] ([device_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[SensorDataAggregated]  WITH CHECK ADD FOREIGN KEY([sensor_type_id])
+REFERENCES [dbo].[SensorType] ([sensor_type_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[SensorSettings]  WITH CHECK ADD FOREIGN KEY([device_id])
+REFERENCES [dbo].[DeviceInfo] ([device_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[SensorSettings]  WITH CHECK ADD FOREIGN KEY([sensor_type_id])
+REFERENCES [dbo].[SensorType] ([sensor_type_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[DeviceInfo]  WITH CHECK ADD  CONSTRAINT [CK_DeviceInfo_status] CHECK  (([status]='ERROR' OR [status]='MAINTENANCE' OR [status]='INACTIVE' OR [status]='ACTIVE'))
+GO
+ALTER TABLE [dbo].[DeviceInfo] CHECK CONSTRAINT [CK_DeviceInfo_status]
+GO

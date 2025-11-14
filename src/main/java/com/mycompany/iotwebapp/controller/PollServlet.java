@@ -43,16 +43,43 @@ public class PollServlet extends HttpServlet {
                 return;
             }
 
-            // Get current thresholds/settings from database
-            Map<String, Double> thresholds = service.getThresholdMapForESP32(deviceId);
+            System.out.println("[PollServlet] Received GET request for deviceId: " + deviceId);
 
-            // Get pending commands for the device
-            List<DeviceCommand> pendingCommands = service.getPendingCommands(deviceId);
+            // Get current thresholds/settings from database
+            Map<String, Double> thresholds = null;
+            try {
+                System.out.println("[PollServlet] Fetching thresholds for device: " + deviceId);
+                thresholds = service.getThresholdMapForESP32(deviceId);
+                System.out.println("[PollServlet] Retrieved " + (thresholds != null ? thresholds.size() : 0) + " threshold settings");
+                if (thresholds != null && !thresholds.isEmpty()) {
+                    for (Map.Entry<String, Double> entry : thresholds.entrySet()) {
+                        System.out.println("[PollServlet]   " + entry.getKey() + " = " + entry.getValue());
+                    }
+                } else {
+                    System.out.println("[PollServlet] ⚠ No thresholds found for device: " + deviceId + " (will return empty map)");
+                }
+            } catch (Exception e) {
+                System.err.println("[PollServlet] ✗ Error fetching thresholds: " + e.getMessage());
+                e.printStackTrace();
+                throw e; // Re-throw to be caught by outer catch
+            }
+
+            // Get pending commands for the device (can be empty list if table doesn't exist)
+            List<DeviceCommand> pendingCommands = new ArrayList<>();
+            try {
+                pendingCommands = service.getPendingCommands(deviceId);
+                System.out.println("[PollServlet] Retrieved " + pendingCommands.size() + " pending commands");
+            } catch (Exception e) {
+                // If DeviceCommand table doesn't exist or has issues, just log and continue with empty list
+                System.err.println("[PollServlet] ⚠ Error fetching commands (continuing with empty list): " + e.getMessage());
+                // Don't throw - just use empty list
+            }
 
             // Build response in exact format expected by ESP32
             Map<String, Object> response = new HashMap<>();
             response.put("update", true);
-            response.put("settings", thresholds);
+            // Always provide settings, even if empty
+            response.put("settings", thresholds != null ? thresholds : new HashMap<String, Double>());
 
             // Convert commands to simple format
             List<Map<String, Object>> commandsList = new ArrayList<>();
@@ -66,11 +93,16 @@ public class PollServlet extends HttpServlet {
             response.put("commands", commandsList);
 
             // Send JSON response
-            resp.getWriter().write(gson.toJson(response));
+            String jsonResponse = gson.toJson(response);
+            System.out.println("[PollServlet] Sending response: " + jsonResponse);
+            resp.getWriter().write(jsonResponse);
 
         } catch (Exception e) {
+            System.err.println("[PollServlet] ✗ INTERNAL ERROR: " + e.getMessage());
+            e.printStackTrace();
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write("{\"update\":false,\"error\":\"Internal server error\"}");
+            resp.getWriter().write("{\"update\":false,\"error\":\"Internal server error: " + 
+                                 e.getMessage().replace("\"", "'") + "\"}");
         }
     }
 

@@ -44,14 +44,36 @@ public class ThresholdService {
      * Maps database names to standard names (e.g., "Gas MQ1" -> "mq1").
      */
     public Map<String, Double> getThresholdMapForESP32(String deviceId) {
+        System.out.println("[ThresholdService] Getting threshold map for ESP32, deviceId: " + deviceId);
+        
         Map<String, Double> dbThresholds = settingsDAO.getThresholdMapForDevice(deviceId);
+        System.out.println("[ThresholdService] Retrieved " + (dbThresholds != null ? dbThresholds.size() : 0) + " thresholds from database");
+        
+        if (dbThresholds != null && !dbThresholds.isEmpty()) {
+            System.out.println("[ThresholdService] Database thresholds:");
+            for (Map.Entry<String, Double> entry : dbThresholds.entrySet()) {
+                System.out.println("  DB Name: '" + entry.getKey() + "' = " + entry.getValue());
+            }
+        } else {
+            System.out.println("[ThresholdService] ⚠ No thresholds found in database for device: " + deviceId);
+        }
+        
         Map<String, Double> standardThresholds = new HashMap<>();
         
         // Map database sensor names to standard names for ESP32/dashboard
         for (Map.Entry<String, Double> entry : dbThresholds.entrySet()) {
             String dbName = entry.getKey();
             String standardName = mapDatabaseNameToStandard(dbName);
+            System.out.println("[ThresholdService] Mapping: '" + dbName + "' -> '" + standardName + "' = " + entry.getValue());
             standardThresholds.put(standardName, entry.getValue());
+        }
+        
+        System.out.println("[ThresholdService] Final standard thresholds map size: " + standardThresholds.size());
+        if (!standardThresholds.isEmpty()) {
+            System.out.println("[ThresholdService] Standard thresholds:");
+            for (Map.Entry<String, Double> entry : standardThresholds.entrySet()) {
+                System.out.println("  '" + entry.getKey() + "' = " + entry.getValue());
+            }
         }
         
         return standardThresholds;
@@ -60,22 +82,42 @@ public class ThresholdService {
     /**
      * Update threshold for a specific sensor type.
      * Maps standard names to database names (e.g., "mq1" -> "Gas MQ1").
+     * Preserves existing sensitivity and calibrationFactor values.
      */
     public void updateThreshold(String deviceId, String sensorName, Double thresholdValue) {
         // Map standard name to database name
         String dbSensorName = mapStandardNameToDatabase(sensorName);
+        System.out.println("[ThresholdService] Updating threshold: device=" + deviceId + ", sensor=" + sensorName + " -> " + dbSensorName + ", value=" + thresholdValue);
         
         SensorType sensorType = sensorTypeDAO.findByName(dbSensorName);
         if (sensorType == null) {
             throw new RuntimeException("Sensor type not found: " + dbSensorName + " (from standard name: " + sensorName + ")");
         }
         
-        SensorSettings setting = new SensorSettings();
-        setting.setDeviceId(deviceId);
-        setting.setSensorTypeId(sensorType.getSensorTypeId());
-        setting.setThresholdValue(thresholdValue);
+        // Check if setting already exists
+        SensorSettings existing = settingsDAO.findByDeviceAndSensorType(deviceId, sensorType.getSensorTypeId());
         
-        settingsDAO.upsert(setting);
+        if (existing != null) {
+            // Update existing setting - preserve sensitivity and calibrationFactor
+            System.out.println("[ThresholdService] Found existing setting for device=" + deviceId + ", sensorTypeId=" + sensorType.getSensorTypeId() + 
+                             ", existing threshold=" + existing.getThresholdValue() + 
+                             ", sensitivity=" + existing.getSensitivity() + 
+                             ", calibrationFactor=" + existing.getCalibrationFactor());
+            existing.setThresholdValue(thresholdValue);
+            boolean updated = settingsDAO.update(existing);
+            System.out.println("[ThresholdService] Updated existing setting: " + updated);
+        } else {
+            // Create new setting with default values
+            System.out.println("[ThresholdService] Creating new setting for device=" + deviceId + ", sensorTypeId=" + sensorType.getSensorTypeId());
+            SensorSettings setting = new SensorSettings();
+            setting.setDeviceId(deviceId);
+            setting.setSensorTypeId(sensorType.getSensorTypeId());
+            setting.setThresholdValue(thresholdValue);
+            setting.setSensitivity(1.0); // Default value
+            setting.setCalibrationFactor(1.0); // Default value
+            Long settingId = settingsDAO.insert(setting);
+            System.out.println("[ThresholdService] Created new setting with id: " + settingId);
+        }
     }
 
     /**

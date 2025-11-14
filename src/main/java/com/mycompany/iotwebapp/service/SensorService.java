@@ -36,6 +36,7 @@ public class SensorService {
      * Process and save sensor data from ESP32 payload.
      * Converts flat ESP32 payload to multiple SensorData records.
      * Maps ESP32 field names (mq135, mq7, mq2) to database sensor names.
+     * ALL sensors from the same payload share the SAME timestamp (saved together).
      */
     public void saveSensorDataFromESP32(ESP32SensorPayload payload) {
         List<SensorData> dataList = new ArrayList<>();
@@ -45,50 +46,61 @@ public class SensorService {
             throw new RuntimeException("deviceId is required");
         }
         
+        // CRITICAL: Create ONE timestamp for ALL sensors from the same payload
+        // This ensures all sensors are saved with the same timestamp
+        LocalDateTime timestamp = LocalDateTime.now();
+        
+        System.out.println("[SensorService] Saving sensor data batch for device: " + deviceId + " at timestamp: " + timestamp);
+        
         // Map each sensor reading to a SensorData record
         // Note: Database uses names like "Temperature", "Gas MQ1", etc.
         if (payload.getTemperature() != null) {
-            dataList.add(createSensorData(deviceId, "Temperature", payload.getTemperature()));
+            dataList.add(createSensorData(deviceId, "Temperature", payload.getTemperature(), timestamp));
         }
         if (payload.getHumidity() != null) {
-            dataList.add(createSensorData(deviceId, "Humidity", payload.getHumidity()));
+            dataList.add(createSensorData(deviceId, "Humidity", payload.getHumidity(), timestamp));
         }
         // Map mq135 (ESP32) -> "Gas MQ1" (database)
         if (payload.getMq135() != null) {
-            dataList.add(createSensorData(deviceId, "Gas MQ1", payload.getMq135()));
+            dataList.add(createSensorData(deviceId, "Gas MQ1", payload.getMq135(), timestamp));
         }
         // Map mq7 (ESP32) -> "Gas MQ2" (database)
         if (payload.getMq7() != null) {
-            dataList.add(createSensorData(deviceId, "Gas MQ2", payload.getMq7()));
+            dataList.add(createSensorData(deviceId, "Gas MQ2", payload.getMq7(), timestamp));
         }
         // Map mq2 (ESP32) -> "Gas MQ3" (database)
         if (payload.getMq2() != null) {
-            dataList.add(createSensorData(deviceId, "Gas MQ3", payload.getMq2()));
+            dataList.add(createSensorData(deviceId, "Gas MQ3", payload.getMq2(), timestamp));
         }
         if (payload.getDust() != null) {
-            dataList.add(createSensorData(deviceId, "Dust Density", payload.getDust()));
+            dataList.add(createSensorData(deviceId, "Dust Density", payload.getDust(), timestamp));
         }
         
-        // Save all data in batch
+        // Save all data in batch with the SAME timestamp
         if (!dataList.isEmpty()) {
+            System.out.println("[SensorService] Saving " + dataList.size() + " sensor records together with timestamp: " + timestamp);
             sensorDataDAO.insertBatch(dataList);
+            System.out.println("[SensorService] Successfully saved batch of " + dataList.size() + " sensor records");
             
             // Update device last_seen
             deviceInfoDAO.updateLastSeen(deviceId);
+        } else {
+            System.out.println("[SensorService] No sensor data to save (all values are null)");
         }
     }
 
     /**
      * Helper method to create SensorData from sensor name (database name) and value.
      * Sets all required fields including defaults for foreign key constraints.
+     * Uses the provided timestamp to ensure all sensors from the same payload have the same timestamp.
      */
-    private SensorData createSensorData(String deviceId, String sensorName, Double value) {
+    private SensorData createSensorData(String deviceId, String sensorName, Double value, LocalDateTime timestamp) {
         SensorType sensorType = sensorTypeDAO.findByName(sensorName);
         if (sensorType == null) {
             throw new RuntimeException("Sensor type not found: " + sensorName);
         }
         
-        LocalDateTime now = LocalDateTime.now();
+        // Use the provided timestamp (same for all sensors from the same payload)
         SensorData data = new SensorData();
         data.setDeviceId(deviceId);
         data.setSensorTypeId(sensorType.getSensorTypeId());
@@ -96,9 +108,9 @@ public class SensorService {
         data.setValue(value); // Also set 'value' field (duplicate but required by DB)
         data.setSensorIndex(0); // CRITICAL: Must match DeviceSensor.sensor_index (default is 0)
         data.setIsValidated(true); // Default to validated
-        data.setCreatedAt(now);
-        data.setTs(now); // Set ts timestamp
-        data.setTimestamp(now); // Set timestamp
+        data.setCreatedAt(timestamp);
+        data.setTs(timestamp); // Set ts timestamp (same for all sensors)
+        data.setTimestamp(timestamp); // Set timestamp (same for all sensors)
         return data;
     }
 
