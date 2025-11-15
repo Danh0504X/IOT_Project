@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -72,6 +73,191 @@
         }
         .chart-card canvas {
             max-height: 320px;
+        }
+        
+        /* AI Prediction Section Styles */
+        .prediction-content {
+            min-height: 120px;
+            padding: 1rem;
+            border-radius: 12px;
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+        }
+        
+        .prediction-item {
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 8px;
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 3px solid rgba(59, 130, 246, 0.5);
+            transition: all 0.2s ease;
+        }
+        
+        .prediction-item:hover {
+            background: rgba(59, 130, 246, 0.15);
+            border-left-color: rgba(59, 130, 246, 0.8);
+        }
+        
+        .prediction-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .prediction-label {
+            font-size: 0.875rem;
+            color: rgba(148, 163, 184, 0.8);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+        
+        .prediction-value {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+        
+        .prediction-trend {
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+        
+        .prediction-trend.up {
+            color: #10b981;
+        }
+        
+        .prediction-trend.down {
+            color: #ef4444;
+        }
+        
+        .prediction-trend.stable {
+            color: rgba(148, 163, 184, 0.7);
+        }
+        
+        /* AQI Badge Styles */
+        .aqi-badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1.5px solid;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+        
+        /* AQI Level: Tốt (Good) - Green */
+        .aqi-badge-good {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border-color: #047857;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+        }
+        
+        /* AQI Level: Trung bình (Average) - Yellow - Improved */
+        .aqi-badge-average {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #1f2937;
+            border-color: #b45309;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+            font-weight: 700;
+        }
+        
+        /* AQI Level: Kém (Poor) - Orange */
+        .aqi-badge-poor {
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            color: white;
+            border-color: #c2410c;
+            box-shadow: 0 2px 6px rgba(249, 115, 22, 0.3);
+        }
+        
+        /* AQI Level: Xấu (Bad) - Red */
+        .aqi-badge-bad {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            border-color: #b91c1c;
+            box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+        }
+        
+        /* AQI Level: Rất xấu (Very Bad) - Purple */
+        .aqi-badge-very-bad {
+            background: linear-gradient(135deg, #a855f7, #9333ea);
+            color: white;
+            border-color: #7e22ce;
+            box-shadow: 0 2px 6px rgba(168, 85, 247, 0.3);
+        }
+        
+        /* AQI Level: Nguy hiểm (Dangerous) - Maroon/Dark Red */
+        .aqi-badge-dangerous {
+            background: linear-gradient(135deg, #991b1b, #7f1d1d);
+            color: white;
+            border-color: #6b1a1a;
+            box-shadow: 0 2px 8px rgba(153, 27, 27, 0.5);
+            font-weight: 700;
+        }
+        
+        /* AQI Value Styles - For Metric Cards (larger size to match display-6) */
+        .aqi-value-card {
+            font-weight: 700;
+            font-size: 2.5rem; /* Match Bootstrap display-6 size */
+            line-height: 1.2;
+        }
+        
+        /* AQI Value Styles - For Table (smaller size) */
+        .aqi-value {
+            font-weight: 700;
+            font-size: 1rem; /* Smaller for table */
+        }
+        
+        /* AQI Value Colors based on AQI range - For Cards */
+        .aqi-value-card.aqi-value-good {
+            color: #10b981 !important; /* Green - Tốt (0-50) */
+        }
+        
+        .aqi-value-card.aqi-value-average {
+            color: #f59e0b !important; /* Amber/Orange - Trung bình (51-100) */
+        }
+        
+        .aqi-value-card.aqi-value-poor {
+            color: #f97316 !important; /* Orange - Kém (101-150) */
+        }
+        
+        .aqi-value-card.aqi-value-bad {
+            color: #ef4444 !important; /* Red - Xấu (151-200) */
+        }
+        
+        .aqi-value-card.aqi-value-very-bad {
+            color: #a855f7 !important; /* Purple - Rất xấu (201-300) */
+        }
+        
+        .aqi-value-card.aqi-value-dangerous {
+            color: #dc2626 !important; /* Dark Red - Nguy hiểm (>300) */
+        }
+        
+        /* AQI Value Colors based on AQI range - For Table */
+        .aqi-value.aqi-value-good {
+            color: #10b981 !important; /* Green - Tốt (0-50) */
+        }
+        
+        .aqi-value.aqi-value-average {
+            color: #f59e0b !important; /* Amber/Orange - Trung bình (51-100) */
+        }
+        
+        .aqi-value.aqi-value-poor {
+            color: #f97316 !important; /* Orange - Kém (101-150) */
+        }
+        
+        .aqi-value.aqi-value-bad {
+            color: #ef4444 !important; /* Red - Xấu (151-200) */
+        }
+        
+        .aqi-value.aqi-value-very-bad {
+            color: #a855f7 !important; /* Purple - Rất xấu (201-300) */
+        }
+        
+        .aqi-value.aqi-value-dangerous {
+            color: #dc2626 !important; /* Dark Red - Nguy hiểm (>300) */
         }
     </style>
 </head>
@@ -159,11 +345,40 @@
                                 <c:set var="firstData" value="${sensorData[0]}" />
                                 <c:choose>
                                     <c:when test="${firstData != null && firstData.aqi != null}">
-                                        <c:set var="aqiColor" value="${firstData.aqiColor != null ? firstData.aqiColor : '#60a5fa'}" />
-                                        <span style="color: ${aqiColor}">
-                                            <fmt:formatNumber value="${firstData.aqi}" maxFractionDigits="0"/>
-                                        </span>
-                                        <span class="fs-6 fw-semibold">${firstData.aqiLevel != null ? firstData.aqiLevel : 'N/A'}</span>
+                                        <c:set var="aqiValue" value="${firstData.aqi}" />
+                                        <c:choose>
+                                            <c:when test="${aqiValue <= 50}">
+                                                <span class="aqi-value-card aqi-value-good">
+                                                    <fmt:formatNumber value="${firstData.aqi}" maxFractionDigits="0"/>
+                                                </span>
+                                            </c:when>
+                                            <c:when test="${aqiValue <= 100}">
+                                                <span class="aqi-value-card aqi-value-average">
+                                                    <fmt:formatNumber value="${firstData.aqi}" maxFractionDigits="0"/>
+                                                </span>
+                                            </c:when>
+                                            <c:when test="${aqiValue <= 150}">
+                                                <span class="aqi-value-card aqi-value-poor">
+                                                    <fmt:formatNumber value="${firstData.aqi}" maxFractionDigits="0"/>
+                                                </span>
+                                            </c:when>
+                                            <c:when test="${aqiValue <= 200}">
+                                                <span class="aqi-value-card aqi-value-bad">
+                                                    <fmt:formatNumber value="${firstData.aqi}" maxFractionDigits="0"/>
+                                                </span>
+                                            </c:when>
+                                            <c:when test="${aqiValue <= 300}">
+                                                <span class="aqi-value-card aqi-value-very-bad">
+                                                    <fmt:formatNumber value="${firstData.aqi}" maxFractionDigits="0"/>
+                                                </span>
+                                            </c:when>
+                                            <c:otherwise>
+                                                <span class="aqi-value-card aqi-value-dangerous">
+                                                    <fmt:formatNumber value="${firstData.aqi}" maxFractionDigits="0"/>
+                                                </span>
+                                            </c:otherwise>
+                                        </c:choose>
+                                        <span class="fs-6 fw-semibold ms-2">${firstData.aqiLevel != null ? firstData.aqiLevel : 'N/A'}</span>
                                     </c:when>
                                     <c:otherwise>
                                         <span class="text-secondary">N/A</span>
@@ -227,6 +442,75 @@
                 </div>
             </div>
 
+            <!-- AI Prediction Section -->
+            <div class="glass-card p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">
+                        <i class="bi bi-robot me-2"></i>Dự đoán 1 giờ tới
+                    </h5>
+                    <span class="text-secondary text-opacity-75 small">
+                        <i class="bi bi-clock-history me-1"></i>Dự đoán bằng AI
+                    </span>
+                </div>
+                <div id="ai-prediction-content" class="prediction-content">
+                    <!-- Placeholder: Đang tải dự đoán -->
+                    <div class="text-center py-4">
+                        <div class="mb-3">
+                            <i class="bi bi-hourglass-split" style="font-size: 2.5rem; color: rgba(148, 163, 184, 0.5);"></i>
+                        </div>
+                        <p class="text-secondary text-opacity-75 mb-0">
+                            Đang tải dự đoán...
+                        </p>
+                        <small class="text-secondary text-opacity-50">
+                            Dữ liệu dự đoán sẽ được hiển thị tại đây
+                        </small>
+                    </div>
+                    
+                    <!-- 
+                    Example HTML structure for AI predictions (uncomment and modify when integrating AI):
+                    
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="prediction-item">
+                                <div class="prediction-label">Nhiệt độ</div>
+                                <div class="prediction-value">29.5°C</div>
+                                <div class="prediction-trend up">
+                                    <i class="bi bi-arrow-up"></i> Tăng 1.2°C
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="prediction-item">
+                                <div class="prediction-label">Độ ẩm</div>
+                                <div class="prediction-value">68.5%</div>
+                                <div class="prediction-trend stable">
+                                    <i class="bi bi-dash"></i> Ổn định
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="prediction-item">
+                                <div class="prediction-label">AQI</div>
+                                <div class="prediction-value">65</div>
+                                <div class="prediction-trend down">
+                                    <i class="bi bi-arrow-down"></i> Giảm 3 điểm
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="prediction-item">
+                                <div class="prediction-label">PM2.5</div>
+                                <div class="prediction-value">12.5 µg/m³</div>
+                                <div class="prediction-trend stable">
+                                    <i class="bi bi-dash"></i> Ổn định
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    -->
+                </div>
+            </div>
+
             <div class="glass-card p-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0"><i class="bi bi-database-check me-2"></i>Bản ghi cảm biến gần nhất</h5>
@@ -265,10 +549,39 @@
                                 <td>
                                     <c:choose>
                                         <c:when test="${item.aqi != null}">
-                                            <c:set var="itemAqiColor" value="${item.aqiColor != null ? item.aqiColor : '#60a5fa'}" />
-                                            <span style="color: ${itemAqiColor}; font-weight: bold;">
-                                                <fmt:formatNumber value="${item.aqi}" maxFractionDigits="0"/>
-                                            </span>
+                                            <c:set var="aqiValue" value="${item.aqi}" />
+                                            <c:choose>
+                                                <c:when test="${aqiValue <= 50}">
+                                                    <span class="aqi-value aqi-value-good">
+                                                        <fmt:formatNumber value="${item.aqi}" maxFractionDigits="0"/>
+                                                    </span>
+                                                </c:when>
+                                                <c:when test="${aqiValue <= 100}">
+                                                    <span class="aqi-value aqi-value-average">
+                                                        <fmt:formatNumber value="${item.aqi}" maxFractionDigits="0"/>
+                                                    </span>
+                                                </c:when>
+                                                <c:when test="${aqiValue <= 150}">
+                                                    <span class="aqi-value aqi-value-poor">
+                                                        <fmt:formatNumber value="${item.aqi}" maxFractionDigits="0"/>
+                                                    </span>
+                                                </c:when>
+                                                <c:when test="${aqiValue <= 200}">
+                                                    <span class="aqi-value aqi-value-bad">
+                                                        <fmt:formatNumber value="${item.aqi}" maxFractionDigits="0"/>
+                                                    </span>
+                                                </c:when>
+                                                <c:when test="${aqiValue <= 300}">
+                                                    <span class="aqi-value aqi-value-very-bad">
+                                                        <fmt:formatNumber value="${item.aqi}" maxFractionDigits="0"/>
+                                                    </span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <span class="aqi-value aqi-value-dangerous">
+                                                        <fmt:formatNumber value="${item.aqi}" maxFractionDigits="0"/>
+                                                    </span>
+                                                </c:otherwise>
+                                            </c:choose>
                                         </c:when>
                                         <c:otherwise>N/A</c:otherwise>
                                     </c:choose>
@@ -276,10 +589,33 @@
                                 <td>
                                     <c:choose>
                                         <c:when test="${item.aqiLevel != null && not empty item.aqiLevel}">
-                                            <c:set var="itemAqiColor" value="${item.aqiColor != null ? item.aqiColor : '#60a5fa'}" />
-                                            <span class="badge" style="background-color: ${itemAqiColor}; color: white;">
-                                                ${item.aqiLevel}
-                                            </span>
+                                            <c:set var="aqiLevelLower" value="${fn:toLowerCase(item.aqiLevel)}" />
+                                            <c:choose>
+                                                <c:when test="${fn:contains(aqiLevelLower, 'tốt') || fn:contains(aqiLevelLower, 'good')}">
+                                                    <span class="aqi-badge aqi-badge-good">${item.aqiLevel}</span>
+                                                </c:when>
+                                                <c:when test="${fn:contains(aqiLevelLower, 'trung bình') || fn:contains(aqiLevelLower, 'average') || fn:contains(aqiLevelLower, 'trung')}">
+                                                    <span class="aqi-badge aqi-badge-average">${item.aqiLevel}</span>
+                                                </c:when>
+                                                <c:when test="${fn:contains(aqiLevelLower, 'kém') || fn:contains(aqiLevelLower, 'poor')}">
+                                                    <span class="aqi-badge aqi-badge-poor">${item.aqiLevel}</span>
+                                                </c:when>
+                                                <c:when test="${fn:contains(aqiLevelLower, 'xấu') || fn:contains(aqiLevelLower, 'bad')}">
+                                                    <span class="aqi-badge aqi-badge-bad">${item.aqiLevel}</span>
+                                                </c:when>
+                                                <c:when test="${fn:contains(aqiLevelLower, 'rất xấu') || fn:contains(aqiLevelLower, 'very bad')}">
+                                                    <span class="aqi-badge aqi-badge-very-bad">${item.aqiLevel}</span>
+                                                </c:when>
+                                                <c:when test="${fn:contains(aqiLevelLower, 'nguy hiểm') || fn:contains(aqiLevelLower, 'dangerous') || fn:contains(aqiLevelLower, 'nguy')}">
+                                                    <span class="aqi-badge aqi-badge-dangerous">${item.aqiLevel}</span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <c:set var="itemAqiColor" value="${item.aqiColor != null ? item.aqiColor : '#60a5fa'}" />
+                                                    <span class="aqi-badge" style="background-color: ${itemAqiColor}; color: white; border-color: ${itemAqiColor};">
+                                                        ${item.aqiLevel}
+                                                    </span>
+                                                </c:otherwise>
+                                            </c:choose>
                                         </c:when>
                                         <c:otherwise>N/A</c:otherwise>
                                     </c:choose>
@@ -381,6 +717,45 @@
         if (value == null || isNaN(value)) return '0';
         return parseFloat(value).toFixed(decimals);
     }
+    
+    // Get AQI Value CSS class based on AQI number
+    function getAQIValueClass(aqi) {
+        if (aqi == null || isNaN(aqi)) return '';
+        const value = parseFloat(aqi);
+        if (value <= 50) return 'aqi-value-good';
+        if (value <= 100) return 'aqi-value-average';
+        if (value <= 150) return 'aqi-value-poor';
+        if (value <= 200) return 'aqi-value-bad';
+        if (value <= 300) return 'aqi-value-very-bad';
+        return 'aqi-value-dangerous';
+    }
+    
+    // Get AQI Badge HTML based on level
+    function getAQIBadgeHTML(level, color) {
+        if (!level) return 'N/A';
+        const levelLower = level.toLowerCase();
+        let badgeClass = '';
+        
+        if (levelLower.includes('tốt') || levelLower.includes('good')) {
+            badgeClass = 'aqi-badge-good';
+        } else if (levelLower.includes('trung bình') || levelLower.includes('average') || levelLower.includes('trung')) {
+            badgeClass = 'aqi-badge-average';
+        } else if (levelLower.includes('kém') || levelLower.includes('poor')) {
+            badgeClass = 'aqi-badge-poor';
+        } else if (levelLower.includes('xấu') || levelLower.includes('bad')) {
+            badgeClass = 'aqi-badge-bad';
+        } else if (levelLower.includes('rất xấu') || levelLower.includes('very bad')) {
+            badgeClass = 'aqi-badge-very-bad';
+        } else if (levelLower.includes('nguy hiểm') || levelLower.includes('dangerous') || levelLower.includes('nguy')) {
+            badgeClass = 'aqi-badge-dangerous';
+        } else {
+            // Fallback to default color
+            const defaultColor = color || '#60a5fa';
+            return '<span class="aqi-badge" style="background-color: ' + defaultColor + '; color: white; border-color: ' + defaultColor + ';">' + level + '</span>';
+        }
+        
+        return '<span class="aqi-badge ' + badgeClass + '">' + level + '</span>';
+    }
 
     // Cập nhật metric cards
     function updateMetricCards(data) {
@@ -415,10 +790,10 @@
         if (humidityCards.length >= 4 && latest.aqi != null) {
             const aqiCard = humidityCards[3].querySelector('h2.display-6');
             if (aqiCard) {
-                const aqiColor = latest.aqiColor || '#60a5fa';
+                const aqiValueClass = getAQIValueClass(latest.aqi);
                 const aqiLevel = latest.aqiLevel || 'N/A';
-                aqiCard.innerHTML = '<span style="color: ' + aqiColor + '">' + formatNumber(latest.aqi, 0) + '</span>' +
-                                   '<span class="fs-6 fw-semibold"> ' + aqiLevel + '</span>';
+                aqiCard.innerHTML = '<span class="aqi-value-card ' + aqiValueClass + '">' + formatNumber(latest.aqi, 0) + '</span>' +
+                                   '<span class="fs-6 fw-semibold ms-2">' + aqiLevel + '</span>';
             }
         }
 
@@ -452,8 +827,8 @@
                 '<td>' + formatNumber(item.mq2, 0) + '</td>' +
                 '<td>' + formatNumber(item.mq3, 0) + '</td>' +
                 '<td>' + formatNumber(item.dust, 2) + '</td>' +
-                '<td>' + (item.aqi != null ? '<span style="color: ' + (item.aqiColor || '#60a5fa') + '; font-weight: bold;">' + formatNumber(item.aqi, 0) + '</span>' : 'N/A') + '</td>' +
-                '<td>' + (item.aqiLevel != null ? '<span class="badge" style="background-color: ' + (item.aqiColor || '#60a5fa') + '; color: white;">' + item.aqiLevel + '</span>' : 'N/A') + '</td>' +
+                '<td>' + (item.aqi != null ? '<span class="aqi-value ' + getAQIValueClass(item.aqi) + '">' + formatNumber(item.aqi, 0) + '</span>' : 'N/A') + '</td>' +
+                '<td>' + (item.aqiLevel != null ? getAQIBadgeHTML(item.aqiLevel, item.aqiColor) : 'N/A') + '</td>' +
                 '<td>' + (item.wifiSignal || 0) + '</td>' +
                 '<td>' + (item.uptime || 0) + '</td>' +
                 '<td>' + (item.timestamp || 'N/A') + '</td>';
