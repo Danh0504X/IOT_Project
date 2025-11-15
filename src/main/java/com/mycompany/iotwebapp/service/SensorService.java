@@ -19,17 +19,20 @@ public class SensorService {
     private final SensorDataDAO sensorDataDAO;
     private final DeviceInfoDAO deviceInfoDAO;
     private final SensorTypeDAO sensorTypeDAO;
+    private final AQIResultDAO aqiResultDAO;
 
     public SensorService() {
         this.sensorDataDAO = new SensorDataDAO();
         this.deviceInfoDAO = new DeviceInfoDAO();
         this.sensorTypeDAO = new SensorTypeDAO();
+        this.aqiResultDAO = new AQIResultDAO();
     }
 
-    public SensorService(SensorDataDAO sensorDataDAO, DeviceInfoDAO deviceInfoDAO, SensorTypeDAO sensorTypeDAO) {
+    public SensorService(SensorDataDAO sensorDataDAO, DeviceInfoDAO deviceInfoDAO, SensorTypeDAO sensorTypeDAO, AQIResultDAO aqiResultDAO) {
         this.sensorDataDAO = sensorDataDAO;
         this.deviceInfoDAO = deviceInfoDAO;
         this.sensorTypeDAO = sensorTypeDAO;
+        this.aqiResultDAO = aqiResultDAO;
     }
 
     /**
@@ -106,10 +109,107 @@ public class SensorService {
             sensorDataDAO.insertBatch(dataList);
             System.out.println("[SensorService] Successfully saved batch of " + dataList.size() + " sensor records");
             
+            // Calculate and save AQI result
+            calculateAndSaveAQI(deviceId, payload, timestamp);
+            
             // Update device last_seen
             deviceInfoDAO.updateLastSeen(deviceId);
         } else {
             System.out.println("[SensorService] No sensor data to save (all values are null)");
+        }
+    }
+    
+    /**
+     * Calculate AQI (Air Quality Index) and save to database.
+     * Uses the same formula as ESP32: AQI = (PM25/500)*500 + (CO/2000)*200 + (Gas/10000)*150
+     */
+    private void calculateAndSaveAQI(Integer deviceId, ESP32SensorPayload payload, LocalDateTime timestamp) {
+        try {
+            // Get sensor values (use 0 if null)
+            float pm25 = payload.getDust() != null ? payload.getDust().floatValue() : 0f;
+            float co = payload.getMq7() != null ? payload.getMq7().floatValue() : 0f;
+            float gas = payload.getMq135() != null ? payload.getMq135().floatValue() : 0f;
+            float temperature = payload.getTemperature() != null ? payload.getTemperature().floatValue() : 0f;
+            float humidity = payload.getHumidity() != null ? payload.getHumidity().floatValue() : 0f;
+            
+            // Calculate AQI using the same formula as ESP32
+            float aqiPM25 = (pm25 / 500.0f) * 500f;  // PM2.5 contribution
+            float aqiCO = (co / 2000.0f) * 200f;     // CO contribution
+            float aqiGas = (gas / 10000.0f) * 150f;  // Gas contribution
+            
+            float aqi = aqiPM25 + aqiCO + aqiGas;
+            
+            // Determine AQI level, color, and main pollutant
+            String aqiLevel = determineAQILevel(aqi);
+            String aqiColor = determineAQIColor(aqi);
+            String mainPollutant = determineMainPollutant(pm25, co, gas);
+            
+            // Create and save AQI result
+            AQIResult aqiResult = new AQIResult();
+            aqiResult.setDeviceId(deviceId);
+            aqiResult.setPm25(pm25);
+            aqiResult.setCo(co);
+            aqiResult.setGas(gas);
+            aqiResult.setTemperature(temperature);
+            aqiResult.setHumidity(humidity);
+            aqiResult.setAqi(aqi);
+            aqiResult.setAqiLevel(aqiLevel);
+            aqiResult.setAqiColor(aqiColor);
+            aqiResult.setMainPollutant(mainPollutant);
+            aqiResult.setCreatedAt(timestamp);
+            
+            Integer aqiId = aqiResultDAO.insert(aqiResult);
+            if (aqiId != null) {
+                System.out.println("[SensorService] Successfully saved AQI result: AQI=" + aqi + 
+                                 ", Level=" + aqiLevel + ", MainPollutant=" + mainPollutant);
+            } else {
+                System.err.println("[SensorService] Failed to save AQI result");
+            }
+        } catch (Exception e) {
+            System.err.println("[SensorService] Error calculating/saving AQI: " + e.getMessage());
+            e.printStackTrace();
+            // Don't throw exception - AQI calculation failure shouldn't break sensor data saving
+        }
+    }
+    
+    /**
+     * Determine AQI level based on AQI value.
+     */
+    private String determineAQILevel(float aqi) {
+        if (aqi <= 50) return "Tốt";
+        if (aqi <= 100) return "Trung bình";
+        if (aqi <= 150) return "Kém";
+        if (aqi <= 200) return "Xấu";
+        if (aqi <= 300) return "Rất xấu";
+        return "Nguy hiểm";
+    }
+    
+    /**
+     * Determine AQI color based on AQI value.
+     */
+    private String determineAQIColor(float aqi) {
+        if (aqi <= 50) return "green";
+        if (aqi <= 100) return "yellow";
+        if (aqi <= 150) return "orange";
+        if (aqi <= 200) return "red";
+        if (aqi <= 300) return "purple";
+        return "maroon";
+    }
+    
+    /**
+     * Determine main pollutant based on highest contribution.
+     */
+    private String determineMainPollutant(float pm25, float co, float gas) {
+        float aqiPM25 = (pm25 / 500.0f) * 500f;
+        float aqiCO = (co / 2000.0f) * 200f;
+        float aqiGas = (gas / 10000.0f) * 150f;
+        
+        if (aqiPM25 >= aqiCO && aqiPM25 >= aqiGas) {
+            return "PM2.5";
+        } else if (aqiCO >= aqiGas) {
+            return "CO";
+        } else {
+            return "Gas";
         }
     }
 

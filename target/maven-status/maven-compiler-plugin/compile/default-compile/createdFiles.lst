@@ -8,8 +8,10 @@ com\mycompany\iotwebapp\model\DashboardData.class
 com\mycompany\iotwebapp\dao\DeviceCommandDAO.class
 com\mycompany\iotwebapp\model\ESP32SensorPayload.class
 com\mycompany\iotwebapp\controller\PollServlet.class
+com\mycompany\iotwebapp\dao\AQIResultDAO.class
 com\mycompany\iotwebapp\controller\DataApiServlet.class
 com\mycompany\iotwebapp\controller\DataServlet.class
+com\mycompany\iotwebapp\model\AQIResult.class
 com\mycompany\iotwebapp\model\Threshold.class
 com\mycompany\iotwebapp\filter\AuthenticationFilter.class
 com\mycompany\iotwebapp\controller\LogoutServlet.class

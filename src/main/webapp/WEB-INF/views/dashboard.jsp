@@ -124,7 +124,7 @@
 
         <c:if test="${not empty sensorData}">
             <div class="row g-4 mb-4">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="metric-card h-100">
                         <span class="text-uppercase text-secondary text-opacity-75 small">Temperature</span>
                         <h2 class="display-6 fw-bold mt-2">
@@ -133,7 +133,7 @@
                         <span class="text-secondary text-opacity-75"><i class="bi bi-thermometer-half me-1"></i>Thiết bị #${sensorData[0].deviceId}</span>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="metric-card h-100">
                         <span class="text-uppercase text-secondary text-opacity-75 small">Humidity</span>
                         <h2 class="display-6 fw-bold mt-2">
@@ -142,13 +142,55 @@
                         <span class="text-secondary text-opacity-75"><i class="bi bi-droplet-half me-1"></i>Độ ẩm hiện tại</span>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="metric-card h-100">
                         <span class="text-uppercase text-secondary text-opacity-75 small">Air Quality</span>
                         <h2 class="display-6 fw-bold mt-2">
                             <fmt:formatNumber value="${sensorData[0].dust}" maxFractionDigits="1"/><span class="fs-5 fw-semibold"> µg/m³</span>
                         </h2>
                         <span class="text-secondary text-opacity-75"><i class="bi bi-wind me-1"></i>Bụi mịn</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-card h-100" style="background: linear-gradient(135deg, rgba(168,85,247,0.35), rgba(139,92,246,0.15));">
+                        <span class="text-uppercase text-secondary text-opacity-75 small">AQI Index</span>
+                        <h2 class="display-6 fw-bold mt-2">
+                            <c:if test="${not empty sensorData}">
+                                <c:set var="firstData" value="${sensorData[0]}" />
+                                <c:choose>
+                                    <c:when test="${firstData != null && firstData.aqi != null}">
+                                        <c:set var="aqiColor" value="${firstData.aqiColor != null ? firstData.aqiColor : '#60a5fa'}" />
+                                        <span style="color: ${aqiColor}">
+                                            <fmt:formatNumber value="${firstData.aqi}" maxFractionDigits="0"/>
+                                        </span>
+                                        <span class="fs-6 fw-semibold">${firstData.aqiLevel != null ? firstData.aqiLevel : 'N/A'}</span>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <span class="text-secondary">N/A</span>
+                                    </c:otherwise>
+                                </c:choose>
+                            </c:if>
+                            <c:if test="${empty sensorData}">
+                                <span class="text-secondary">N/A</span>
+                            </c:if>
+                        </h2>
+                        <span class="text-secondary text-opacity-75">
+                            <i class="bi bi-speedometer2 me-1"></i>
+                            <c:if test="${not empty sensorData}">
+                                <c:set var="firstData" value="${sensorData[0]}" />
+                                <c:choose>
+                                    <c:when test="${firstData != null && firstData.mainPollutant != null && not empty firstData.mainPollutant}">
+                                        Chất ô nhiễm chính: ${firstData.mainPollutant}
+                                    </c:when>
+                                    <c:otherwise>
+                                        Chỉ số chất lượng không khí
+                                    </c:otherwise>
+                                </c:choose>
+                            </c:if>
+                            <c:if test="${empty sensorData}">
+                                Chỉ số chất lượng không khí
+                            </c:if>
+                        </span>
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -202,6 +244,8 @@
                             <th>MQ2</th>
                             <th>MQ3</th>
                             <th>Dust (µg/m³)</th>
+                            <th>AQI</th>
+                            <th>AQI Level</th>
                             <th>Wi-Fi (dBm)</th>
                             <th>Uptime (s)</th>
                             <th>Timestamp</th>
@@ -218,6 +262,28 @@
                                 <td><fmt:formatNumber value="${item.mq2}" maxFractionDigits="0"/></td>
                                 <td><fmt:formatNumber value="${item.mq3}" maxFractionDigits="0"/></td>
                                 <td><fmt:formatNumber value="${item.dust}" maxFractionDigits="2"/></td>
+                                <td>
+                                    <c:choose>
+                                        <c:when test="${item.aqi != null}">
+                                            <c:set var="itemAqiColor" value="${item.aqiColor != null ? item.aqiColor : '#60a5fa'}" />
+                                            <span style="color: ${itemAqiColor}; font-weight: bold;">
+                                                <fmt:formatNumber value="${item.aqi}" maxFractionDigits="0"/>
+                                            </span>
+                                        </c:when>
+                                        <c:otherwise>N/A</c:otherwise>
+                                    </c:choose>
+                                </td>
+                                <td>
+                                    <c:choose>
+                                        <c:when test="${item.aqiLevel != null && not empty item.aqiLevel}">
+                                            <c:set var="itemAqiColor" value="${item.aqiColor != null ? item.aqiColor : '#60a5fa'}" />
+                                            <span class="badge" style="background-color: ${itemAqiColor}; color: white;">
+                                                ${item.aqiLevel}
+                                            </span>
+                                        </c:when>
+                                        <c:otherwise>N/A</c:otherwise>
+                                    </c:choose>
+                                </td>
                                 <td>${item.wifiSignal}</td>
                                 <td>${item.uptime}</td>
                                 <td><fmt:formatDate value="${item.timestampAsDate}" pattern="yyyy-MM-dd HH:mm:ss"/></td>
@@ -345,9 +411,20 @@
             }
         }
 
+        // AQI Index card
+        if (humidityCards.length >= 4 && latest.aqi != null) {
+            const aqiCard = humidityCards[3].querySelector('h2.display-6');
+            if (aqiCard) {
+                const aqiColor = latest.aqiColor || '#60a5fa';
+                const aqiLevel = latest.aqiLevel || 'N/A';
+                aqiCard.innerHTML = '<span style="color: ' + aqiColor + '">' + formatNumber(latest.aqi, 0) + '</span>' +
+                                   '<span class="fs-6 fw-semibold"> ' + aqiLevel + '</span>';
+            }
+        }
+
         // WiFi Signal card
-        if (humidityCards.length >= 4 && latest.wifiSignal != null) {
-            const wifiCard = humidityCards[3].querySelector('h2.display-6');
+        if (humidityCards.length >= 5 && latest.wifiSignal != null) {
+            const wifiCard = humidityCards[4].querySelector('h2.display-6');
             if (wifiCard) {
                 wifiCard.innerHTML = latest.wifiSignal + '<span class="fs-5 fw-semibold"> dBm</span>';
             }
@@ -375,6 +452,8 @@
                 '<td>' + formatNumber(item.mq2, 0) + '</td>' +
                 '<td>' + formatNumber(item.mq3, 0) + '</td>' +
                 '<td>' + formatNumber(item.dust, 2) + '</td>' +
+                '<td>' + (item.aqi != null ? '<span style="color: ' + (item.aqiColor || '#60a5fa') + '; font-weight: bold;">' + formatNumber(item.aqi, 0) + '</span>' : 'N/A') + '</td>' +
+                '<td>' + (item.aqiLevel != null ? '<span class="badge" style="background-color: ' + (item.aqiColor || '#60a5fa') + '; color: white;">' + item.aqiLevel + '</span>' : 'N/A') + '</td>' +
                 '<td>' + (item.wifiSignal || 0) + '</td>' +
                 '<td>' + (item.uptime || 0) + '</td>' +
                 '<td>' + (item.timestamp || 'N/A') + '</td>';

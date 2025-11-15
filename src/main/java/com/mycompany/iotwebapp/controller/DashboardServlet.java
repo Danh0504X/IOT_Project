@@ -116,8 +116,13 @@ public class DashboardServlet extends HttpServlet {
             List<SensorData> rawData = service.getRecentData(deviceId, 100);
             System.out.println("[DashboardServlet] Loaded " + rawData.size() + " raw sensor records");
             
+            // Get recent AQI results from database
+            com.mycompany.iotwebapp.dao.AQIResultDAO aqiDAO = new com.mycompany.iotwebapp.dao.AQIResultDAO();
+            List<com.mycompany.iotwebapp.model.AQIResult> aqiResults = aqiDAO.findLatestByDevice(deviceId, 100);
+            System.out.println("[DashboardServlet] Loaded " + aqiResults.size() + " AQI results");
+            
             // Convert normalized data to dashboard format
-            List<DashboardData> dashboardData = convertToDashboardData(rawData);
+            List<DashboardData> dashboardData = convertToDashboardData(rawData, aqiResults);
             System.out.println("[DashboardServlet] Converted to " + dashboardData.size() + " dashboard records");
             
             // Check if JSON format is requested
@@ -142,6 +147,10 @@ public class DashboardServlet extends HttpServlet {
                     item.put("dust", dd.getDust());
                     item.put("wifiSignal", dd.getWifiSignal());
                     item.put("uptime", dd.getUptime());
+                    item.put("aqi", dd.getAqi());
+                    item.put("aqiLevel", dd.getAqiLevel());
+                    item.put("aqiColor", dd.getAqiColor());
+                    item.put("mainPollutant", dd.getMainPollutant());
                     jsonData.add(item);
                 }
                 
@@ -184,8 +193,9 @@ public class DashboardServlet extends HttpServlet {
     /**
      * Convert normalized SensorData list to aggregated DashboardData list.
      * Groups sensor readings by timestamp (with tolerance for microsecond differences).
+     * Also maps AQI results to corresponding dashboard data.
      */
-    private List<DashboardData> convertToDashboardData(List<SensorData> rawData) {
+    private List<DashboardData> convertToDashboardData(List<SensorData> rawData, List<com.mycompany.iotwebapp.model.AQIResult> aqiResults) {
         System.out.println("[DashboardServlet] Converting " + rawData.size() + " raw sensor records to dashboard data");
         
         if (rawData.isEmpty()) {
@@ -213,9 +223,24 @@ public class DashboardServlet extends HttpServlet {
         
         System.out.println("[DashboardServlet] Grouped into " + grouped.size() + " timestamp groups");
 
+        // Create a map of AQI results by timestamp (rounded to seconds) for quick lookup
+        Map<String, com.mycompany.iotwebapp.model.AQIResult> aqiMap = new HashMap<>();
+        for (com.mycompany.iotwebapp.model.AQIResult aqi : aqiResults) {
+            if (aqi.getCreatedAt() != null) {
+                String timeKey = aqi.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                // Keep the latest AQI for each timestamp
+                if (!aqiMap.containsKey(timeKey) || 
+                    aqi.getCreatedAt().isAfter(aqiMap.get(timeKey).getCreatedAt())) {
+                    aqiMap.put(timeKey, aqi);
+                }
+            }
+        }
+        System.out.println("[DashboardServlet] Created AQI map with " + aqiMap.size() + " entries");
+
         // Convert to DashboardData
         List<DashboardData> result = new ArrayList<>();
         for (Map.Entry<String, List<SensorData>> entry : grouped.entrySet()) {
+            String timeKey = entry.getKey();
             List<SensorData> sensors = entry.getValue();
             
             // Use the earliest timestamp from the group as the representative timestamp
@@ -261,6 +286,18 @@ public class DashboardServlet extends HttpServlet {
                     } else {
                         System.out.println("[DashboardServlet] Warning: Sensor has null value - typeId=" + sensorTypeId + ", name=" + dbSensorName);
                     }
+                }
+                
+                // Map AQI result to this dashboard data if available
+                com.mycompany.iotwebapp.model.AQIResult aqiResult = aqiMap.get(timeKey);
+                if (aqiResult != null) {
+                    data.setAqi(aqiResult.getAqi() != null ? aqiResult.getAqi().doubleValue() : null);
+                    data.setAqiLevel(aqiResult.getAqiLevel());
+                    data.setAqiColor(aqiResult.getAqiColor());
+                    data.setMainPollutant(aqiResult.getMainPollutant());
+                    System.out.println("[DashboardServlet] Mapped AQI: " + aqiResult.getAqi() + ", Level=" + aqiResult.getAqiLevel());
+                } else {
+                    System.out.println("[DashboardServlet] No AQI result found for timestamp: " + timeKey);
                 }
                 
                 System.out.println("[DashboardServlet] DashboardData created with " + data.getSensorValues().size() + " sensor values: " + data.getSensorValues());

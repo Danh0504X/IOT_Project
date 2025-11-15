@@ -96,6 +96,44 @@ public class DashboardData {
         return value != null ? value.intValue() : 0;
     }
 
+    // AQI fields
+    private Double aqi;
+    private String aqiLevel;
+    private String aqiColor;
+    private String mainPollutant;
+
+    public Double getAqi() {
+        return aqi;
+    }
+
+    public void setAqi(Double aqi) {
+        this.aqi = aqi;
+    }
+
+    public String getAqiLevel() {
+        return aqiLevel;
+    }
+
+    public void setAqiLevel(String aqiLevel) {
+        this.aqiLevel = aqiLevel;
+    }
+
+    public String getAqiColor() {
+        return aqiColor;
+    }
+
+    public void setAqiColor(String aqiColor) {
+        this.aqiColor = aqiColor;
+    }
+
+    public String getMainPollutant() {
+        return mainPollutant;
+    }
+
+    public void setMainPollutant(String mainPollutant) {
+        this.mainPollutant = mainPollutant;
+    }
+
     /**
      * Convert LocalDateTime to java.util.Date for JSP fmt:formatDate tag compatibility.
      */
