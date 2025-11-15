@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -73,12 +72,22 @@ public class ThresholdAdminServlet extends HttpServlet {
 
             System.out.println("[ThresholdAdminServlet] Loading threshold settings for device: " + deviceId);
 
-            // Get threshold map with sensor names
-            Map<String, Double> thresholds = service.getThresholdMapForESP32(deviceId);
-            System.out.println("[ThresholdAdminServlet] Retrieved thresholds: " + thresholds);
+            // Get all threshold levels for all sensors
+            // This will ALWAYS return default thresholds if database is empty (ensures form always displays)
+            Map<String, java.util.List<com.mycompany.iotwebapp.model.Threshold>> allThresholdLevels = service.getAllThresholdLevels();
+            System.out.println("[ThresholdAdminServlet] Retrieved " + allThresholdLevels.size() + " sensor types with threshold levels");
+            
+            // Ensure we have at least 6 sensors (one for each type)
+            if (allThresholdLevels.isEmpty()) {
+                System.err.println("[ThresholdAdminServlet] ⚠ WARNING: getAllThresholdLevels() returned empty map! Form may not display.");
+            }
+            
+            // Also get simple threshold map for backward compatibility (display current values)
+            Map<String, Double> simpleThresholds = service.getThresholdMapForESP32(deviceId);
             
             req.setAttribute("deviceId", deviceId);
-            req.setAttribute("thresholds", thresholds);
+            req.setAttribute("allThresholdLevels", allThresholdLevels);
+            req.setAttribute("thresholds", simpleThresholds); // For backward compatibility
             
             // Check for success message
             String message = req.getParameter("message");
@@ -134,38 +143,87 @@ public class ThresholdAdminServlet extends HttpServlet {
 
             System.out.println("[ThresholdAdminServlet] Processing POST request for device: " + deviceId);
 
-            // Build threshold map from form parameters
-            Map<String, Double> thresholds = new HashMap<>();
-            
-            // Parse form parameters for each sensor type
-            String[] sensorNames = {"mq1", "mq2", "mq3", "temperature", "humidity", "dust"};
-            for (String sensorName : sensorNames) {
-                String valueParam = req.getParameter(sensorName);
-                if (valueParam != null && !valueParam.isEmpty()) {
-                    try {
-                        Double value = Double.parseDouble(valueParam);
-                        thresholds.put(sensorName, value);
-                        System.out.println("[ThresholdAdminServlet] ✓ Parsed threshold: " + sensorName + " = " + value);
-                    } catch (NumberFormatException e) {
-                        System.err.println("[ThresholdAdminServlet] ✗ Invalid number format for " + sensorName + ": " + valueParam);
-                        // Continue with other sensors
-                    }
-                } else {
-                    System.out.println("[ThresholdAdminServlet] ⚠ No value provided for " + sensorName);
+            // Get current user ID from session (for logging) - default to 1 if not available
+            Integer updatedBy = 1; // TODO: Get from session
+            if (req.getSession().getAttribute("userId") != null) {
+                try {
+                    updatedBy = Integer.parseInt(req.getSession().getAttribute("userId").toString());
+                } catch (NumberFormatException e) {
+                    System.out.println("[ThresholdAdminServlet] ⚠ Could not parse userId from session, using default: 1");
                 }
             }
 
-            if (thresholds.isEmpty()) {
+            // Parse all threshold levels from form parameters
+            // Format: sensorName_levelIndex_minValue, sensorName_levelIndex_maxValue
+            String[] sensorNames = {"temperature", "humidity", "mq1", "mq2", "mq3", "dust"};
+            boolean hasUpdates = false;
+            
+            // Get all threshold levels once (more efficient)
+            Map<String, java.util.List<com.mycompany.iotwebapp.model.Threshold>> allLevels = service.getAllThresholdLevels();
+            
+            for (String sensorName : sensorNames) {
+                // Get threshold levels for this sensor
+                java.util.List<com.mycompany.iotwebapp.model.Threshold> sensorThresholds = allLevels.get(sensorName);
+                
+                if (sensorThresholds == null || sensorThresholds.isEmpty()) {
+                    System.out.println("[ThresholdAdminServlet] ⚠ No thresholds found for sensor: " + sensorName);
+                    continue;
+                }
+                
+                // Update each level
+                java.util.List<com.mycompany.iotwebapp.model.Threshold> updatedThresholds = new java.util.ArrayList<>();
+                
+                for (int i = 0; i < sensorThresholds.size(); i++) {
+                    com.mycompany.iotwebapp.model.Threshold threshold = sensorThresholds.get(i);
+                    
+                    // Get form parameters: sensorName_levelIndex_minValue, sensorName_levelIndex_maxValue
+                    String minValueParam = req.getParameter(sensorName + "_" + i + "_minValue");
+                    String maxValueParam = req.getParameter(sensorName + "_" + i + "_maxValue");
+                    
+                    if (minValueParam != null && maxValueParam != null && 
+                        !minValueParam.isEmpty() && !maxValueParam.isEmpty()) {
+                        try {
+                            Float minValue = Float.parseFloat(minValueParam);
+                            Float maxValue = Float.parseFloat(maxValueParam);
+                            
+                            // Validate: minValue < maxValue
+                            if (minValue >= maxValue) {
+                                System.err.println("[ThresholdAdminServlet] ✗ Invalid range for " + sensorName + 
+                                                 " level " + i + ": minValue (" + minValue + ") >= maxValue (" + maxValue + ")");
+                                continue;
+                            }
+                            
+                            // Update threshold values
+                            threshold.setMinValue(minValue);
+                            threshold.setMaxValue(maxValue);
+                            
+                            // Preserve LevelName, AlertLevel, Message if they exist
+                            // (These are set from defaults if thresholdId is null)
+                            
+                            updatedThresholds.add(threshold);
+                            hasUpdates = true;
+                            
+                            System.out.println("[ThresholdAdminServlet] ✓ Parsed " + sensorName + " level " + i + 
+                                             " (" + threshold.getLevelName() + "): " + minValue + " - " + maxValue +
+                                             (threshold.getThresholdId() != null ? " (UPDATE)" : " (INSERT NEW)"));
+                        } catch (NumberFormatException e) {
+                            System.err.println("[ThresholdAdminServlet] ✗ Invalid number format for " + sensorName + 
+                                             " level " + i + ": min=" + minValueParam + ", max=" + maxValueParam);
+                        }
+                    }
+                }
+                
+                // Update all levels for this sensor
+                if (!updatedThresholds.isEmpty()) {
+                    service.updateAllThresholdLevels(sensorName, updatedThresholds, updatedBy);
+                }
+            }
+
+            if (!hasUpdates) {
                 System.err.println("[ThresholdAdminServlet] ✗ No valid threshold values provided");
                 resp.sendRedirect(req.getContextPath() + "/admin/thresholds?deviceId=" + deviceId + "&message=error");
                 return;
             }
-
-            System.out.println("[ThresholdAdminServlet] Updating " + thresholds.size() + " thresholds for device: " + deviceId);
-            System.out.println("[ThresholdAdminServlet] Thresholds to update: " + thresholds);
-            
-            // Update thresholds in database
-            service.updateThresholds(deviceId, thresholds);
 
             System.out.println("[ThresholdAdminServlet] ✅ Successfully updated thresholds for device: " + deviceId);
 

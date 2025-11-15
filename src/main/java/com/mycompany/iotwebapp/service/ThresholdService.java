@@ -287,4 +287,229 @@ public class ThresholdService {
         
         return thresholds.isEmpty() ? null : thresholds.get(0);
     }
+
+    /**
+     * Get all threshold levels for a specific sensor type.
+     * Returns a map: sensorName -> List of Thresholds (all levels)
+     * ALWAYS returns default thresholds for form display, even if database is empty.
+     * This ensures the form is always visible for user input.
+     */
+    public Map<String, List<Threshold>> getAllThresholdLevels() {
+        Map<String, List<Threshold>> result = new HashMap<>();
+        
+        // Map standard names to sensor codes (only unique mappings to avoid overwriting)
+        // Use consistent keys: temperature, humidity, mq1, mq2, mq3, dust
+        Map<String, String> sensorCodeMap = new HashMap<>();
+        sensorCodeMap.put("temperature", "TEMP_DHT11");
+        sensorCodeMap.put("humidity", "HUM_DHT11");
+        sensorCodeMap.put("mq1", "MQ135");      // MQ135 Air Quality
+        sensorCodeMap.put("mq2", "MQ7");        // MQ7 CO
+        sensorCodeMap.put("mq3", "MQ2");        // MQ2 Gas/LPG
+        sensorCodeMap.put("dust", "GP2Y10");    // PM2.5
+        
+        // Default SensorType IDs (fallback if not found in DB)
+        // These should match the order in sql_script.txt
+        Map<String, Integer> defaultSensorTypeIds = new HashMap<>();
+        defaultSensorTypeIds.put("temperature", 1);  // TEMP_DHT11
+        defaultSensorTypeIds.put("humidity", 2);     // HUM_DHT11
+        defaultSensorTypeIds.put("mq3", 3);          // MQ2 (Gas/LPG)
+        defaultSensorTypeIds.put("mq2", 4);          // MQ7 (CO)
+        defaultSensorTypeIds.put("mq1", 5);          // MQ135
+        defaultSensorTypeIds.put("dust", 6);         // GP2Y10
+        
+        for (Map.Entry<String, String> entry : sensorCodeMap.entrySet()) {
+            String standardName = entry.getKey();
+            String sensorCode = entry.getValue();
+            Integer sensorTypeId = null;
+            
+            try {
+                // Try to find SensorType from database
+                SensorType sensorType = sensorTypeDAO.findByCode(sensorCode);
+                if (sensorType != null) {
+                    sensorTypeId = sensorType.getSensorTypeId();
+                    System.out.println("[ThresholdService] Found SensorType for " + standardName + ": ID=" + sensorTypeId);
+                    
+                    // Try to load existing thresholds from database
+                    List<Threshold> thresholds = thresholdDAO.findBySensorTypeId(sensorTypeId);
+                    if (thresholds != null && !thresholds.isEmpty()) {
+                        result.put(standardName, thresholds);
+                        System.out.println("[ThresholdService] ✅ Loaded " + thresholds.size() + " levels from DB for " + standardName);
+                        continue; // Skip to next sensor
+                    }
+                } else {
+                    // SensorType not found, use default ID
+                    sensorTypeId = defaultSensorTypeIds.get(standardName);
+                    System.out.println("[ThresholdService] ⚠ SensorType not found for " + standardName + ", using default ID: " + sensorTypeId);
+                }
+                
+                // If we reach here, either no SensorType found or no thresholds in DB
+                // Always provide default thresholds for form display
+                if (sensorTypeId == null) {
+                    // If still no sensorTypeId, use default from map
+                    sensorTypeId = defaultSensorTypeIds.get(standardName);
+                    System.out.println("[ThresholdService] Using fallback SensorTypeID: " + sensorTypeId + " for " + standardName);
+                }
+                
+                if (sensorTypeId != null) {
+                    List<Threshold> defaultThresholds = getDefaultThresholds(standardName, sensorTypeId);
+                    if (defaultThresholds != null && !defaultThresholds.isEmpty()) {
+                        result.put(standardName, defaultThresholds);
+                        System.out.println("[ThresholdService] ✅ Using " + defaultThresholds.size() + " default levels for " + standardName + " (form display)");
+                    } else {
+                        System.err.println("[ThresholdService] ✗ Failed to create default thresholds for " + standardName);
+                    }
+                } else {
+                    System.err.println("[ThresholdService] ✗ No SensorTypeID available for " + standardName + " - cannot create defaults");
+                }
+                
+            } catch (Exception e) {
+                System.err.println("[ThresholdService] ✗ Error getting thresholds for " + standardName + ": " + e.getMessage());
+                e.printStackTrace();
+                
+                // Even on error, try to provide defaults
+                try {
+                    Integer fallbackId = defaultSensorTypeIds.get(standardName);
+                    if (fallbackId != null) {
+                        List<Threshold> defaultThresholds = getDefaultThresholds(standardName, fallbackId);
+                        if (defaultThresholds != null && !defaultThresholds.isEmpty()) {
+                            result.put(standardName, defaultThresholds);
+                            System.out.println("[ThresholdService] ✅ Using defaults for " + standardName + " after error");
+                        }
+                    }
+                } catch (Exception e2) {
+                    System.err.println("[ThresholdService] ✗ Failed to create defaults after error: " + e2.getMessage());
+                }
+            }
+        }
+        
+        // Ensure we always return at least 6 sensors (one for each type)
+        if (result.size() < 6) {
+            System.err.println("[ThresholdService] ⚠ WARNING: Only " + result.size() + " sensors loaded, expected 6");
+        }
+        
+        System.out.println("[ThresholdService] getAllThresholdLevels() returning " + result.size() + " sensor types (form will always display)");
+        return result;
+    }
+
+    /**
+     * Get default threshold structure for a sensor type (for form display when no data exists).
+     */
+    private List<Threshold> getDefaultThresholds(String sensorName, Integer sensorTypeId) {
+        List<Threshold> defaults = new java.util.ArrayList<>();
+        
+        switch (sensorName) {
+            case "temperature":
+                // 4 levels: Lạnh, Bình thường, Nóng, Rất nóng
+                defaults.add(createDefaultThreshold(sensorTypeId, "Lạnh", -40f, 18f, 0, "Nhiệt độ thấp"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Bình thường", 18f, 32f, 0, "Nhiệt độ thoải mái"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Nóng", 32f, 39f, 1, "Nhiệt độ cao"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Rất nóng", 39f, 80f, 2, "Cảnh báo say nóng"));
+                break;
+            case "humidity":
+                // 3 levels: Khô, Bình thường, Ẩm
+                defaults.add(createDefaultThreshold(sensorTypeId, "Khô", 0f, 30f, 1, "Không khí khô"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Bình thường", 30f, 70f, 0, "Độ ẩm tốt"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Ẩm", 70f, 100f, 1, "Độ ẩm cao"));
+                break;
+            case "mq1": // MQ135
+                // 4 levels: Tốt, Trung bình, Nguy hiểm, Rất nguy hiểm
+                defaults.add(createDefaultThreshold(sensorTypeId, "Tốt", 0f, 200f, 0, "Chất lượng không khí tốt"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Trung bình", 200f, 400f, 1, "Chất lượng không khí trung bình"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Nguy hiểm", 400f, 600f, 2, "Chất lượng không khí kém"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Rất nguy hiểm", 600f, 1000f, 3, "Chất lượng không khí rất kém"));
+                break;
+            case "mq2": // MQ7 CO
+                // 4 levels: An toàn, Chú ý, Nguy hiểm, Rất nguy hiểm
+                defaults.add(createDefaultThreshold(sensorTypeId, "An toàn", 0f, 50f, 0, "Nồng độ CO an toàn"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Chú ý", 50f, 200f, 1, "Kiểm tra thông gió"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Nguy hiểm", 200f, 800f, 2, "NGUY HIỂM! Tăng thông gió"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Rất nguy hiểm", 800f, 2000f, 3, "SƠ TÁN NGAY! Nguy cơ tử vong"));
+                break;
+            case "mq3": // MQ2 Gas/LPG
+                // 4 levels: An toàn, Chú ý, Rò rỉ, Nguy cơ nổ
+                defaults.add(createDefaultThreshold(sensorTypeId, "An toàn", 0f, 300f, 0, "Không phát hiện gas"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Chú ý", 300f, 1000f, 1, "Có gas, kiểm tra nguồn"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Rò rỉ", 1000f, 5000f, 2, "RÒ RỈ GAS! Tắt nguồn ngay"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Nguy cơ nổ", 5000f, 10000f, 3, "CỰC NGUY HIỂM! Sơ tán ngay"));
+                break;
+            case "dust": // PM2.5
+                // 5 levels: Tốt, Trung bình, Kém, Xấu, Nguy hiểm
+                defaults.add(createDefaultThreshold(sensorTypeId, "Tốt", 0f, 12f, 0, "Không khí tốt"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Trung bình", 12f, 35f, 1, "Chấp nhận được"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Kém", 35f, 55f, 2, "Nhạy cảm nên hạn chế ra ngoài"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Xấu", 55f, 150f, 2, "Hạn chế hoạt động ngoài trời"));
+                defaults.add(createDefaultThreshold(sensorTypeId, "Nguy hiểm", 150f, 500f, 3, "KHẨN CẤP! Ở trong nhà"));
+                break;
+        }
+        
+        return defaults;
+    }
+
+    /**
+     * Helper method to create a default threshold object.
+     */
+    private Threshold createDefaultThreshold(Integer sensorTypeId, String levelName, Float minValue, Float maxValue, Integer alertLevel, String message) {
+        Threshold threshold = new Threshold();
+        threshold.setSensorTypeId(sensorTypeId);
+        threshold.setLevelName(levelName);
+        threshold.setMinValue(minValue);
+        threshold.setMaxValue(maxValue);
+        threshold.setAlertLevel(alertLevel);
+        threshold.setMessage(message);
+        // thresholdId is null for new thresholds
+        return threshold;
+    }
+
+    /**
+     * Update all threshold levels for a sensor type.
+     * @param sensorName Standard sensor name (e.g., "temperature", "humidity")
+     * @param thresholds List of Threshold objects with updated values
+     * @param updatedBy User ID who made the update
+     */
+    public void updateAllThresholdLevels(String sensorName, List<Threshold> thresholds, Integer updatedBy) {
+        System.out.println("[ThresholdService] Updating all threshold levels for sensor: " + sensorName);
+        
+        if (thresholds == null || thresholds.isEmpty()) {
+            System.out.println("[ThresholdService] ⚠ No thresholds provided for " + sensorName);
+            return;
+        }
+        
+        // Get sensor type ID
+        String sensorCode = mapStandardNameToSensorCode(sensorName);
+        if (sensorCode == null) {
+            System.err.println("[ThresholdService] ✗ Unknown sensor name: " + sensorName);
+            return;
+        }
+        
+        SensorType sensorType = sensorTypeDAO.findByCode(sensorCode);
+        if (sensorType == null) {
+            System.err.println("[ThresholdService] ✗ SensorType not found for code: " + sensorCode);
+            return;
+        }
+        
+        for (Threshold threshold : thresholds) {
+            // Ensure sensorTypeId is set
+            threshold.setSensorTypeId(sensorType.getSensorTypeId());
+            
+            if (threshold.getThresholdId() != null) {
+                // Update existing threshold
+                boolean updated = thresholdDAO.update(threshold, updatedBy);
+                if (updated) {
+                    System.out.println("[ThresholdService] ✅ Updated threshold ID: " + threshold.getThresholdId() + 
+                                     ", Level: " + threshold.getLevelName());
+                } else {
+                    System.err.println("[ThresholdService] ✗ Failed to update threshold ID: " + threshold.getThresholdId());
+                }
+            } else {
+                // Insert new threshold
+                Integer thresholdId = thresholdDAO.insert(threshold);
+                if (thresholdId != null) {
+                    System.out.println("[ThresholdService] ✅ Created new threshold ID: " + thresholdId + 
+                                     ", Level: " + threshold.getLevelName());
+                } else {
+                    System.err.println("[ThresholdService] ✗ Failed to create new threshold");
+                }
+            }
+        }
+    }
 }
