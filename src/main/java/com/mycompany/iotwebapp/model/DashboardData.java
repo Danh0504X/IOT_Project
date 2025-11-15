@@ -9,7 +9,7 @@ import java.util.Map;
  * Aggregates sensor readings into a flat structure for easy JSP rendering.
  */
 public class DashboardData {
-    private String deviceId;
+    private Integer deviceId;
     private LocalDateTime timestamp;
     private Map<String, Double> sensorValues;
 
@@ -17,19 +17,28 @@ public class DashboardData {
         this.sensorValues = new HashMap<>();
     }
 
-    public DashboardData(String deviceId, LocalDateTime timestamp) {
+    public DashboardData(Integer deviceId, LocalDateTime timestamp) {
         this.deviceId = deviceId;
         this.timestamp = timestamp;
         this.sensorValues = new HashMap<>();
     }
 
     // Getters and Setters
-    public String getDeviceId() {
+    public Integer getDeviceId() {
         return deviceId;
     }
 
-    public void setDeviceId(String deviceId) {
+    public void setDeviceId(Integer deviceId) {
         this.deviceId = deviceId;
+    }
+    
+    // Convenience method for backward compatibility
+    public void setDeviceId(String deviceId) {
+        try {
+            this.deviceId = Integer.parseInt(deviceId);
+        } catch (NumberFormatException e) {
+            this.deviceId = null;
+        }
     }
 
     public LocalDateTime getTimestamp() {

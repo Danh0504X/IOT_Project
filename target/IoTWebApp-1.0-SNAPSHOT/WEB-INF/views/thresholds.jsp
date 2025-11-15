@@ -264,6 +264,13 @@
                     </div>
                     <div class="col-md-4 col-sm-6">
                         <div class="value-item">
+                            <span class="value-label"><i class="bi bi-moisture me-1"></i>Humidity</span>
+                            <div class="value-number">${thresholds['humidity'] != null ? thresholds['humidity'] : 70.0}</div>
+                            <small class="text-secondary text-opacity-75">%</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6">
+                        <div class="value-item">
                             <span class="value-label"><i class="bi bi-cloud-dust me-1"></i>Dust</span>
                             <div class="value-number">${thresholds['dust'] != null ? thresholds['dust'] : 50.0}</div>
                             <small class="text-secondary text-opacity-75">µg/m³</small>
@@ -348,6 +355,25 @@
                                    max="100" 
                                    value="${thresholds['temperature'] != null ? thresholds['temperature'] : 30.0}" 
                                    placeholder="Nhập nhiệt độ giới hạn"
+                                   required>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="humidity">
+                                <i class="bi bi-moisture me-1"></i>Humidity Limit
+                                <span class="label-description">- Relative Humidity (%)</span>
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="humidity" 
+                                   name="humidity" 
+                                   step="0.1" 
+                                   min="0" 
+                                   max="100" 
+                                   value="${thresholds['humidity'] != null ? thresholds['humidity'] : 70.0}" 
+                                   placeholder="Nhập độ ẩm giới hạn"
                                    required>
                         </div>
                     </div>

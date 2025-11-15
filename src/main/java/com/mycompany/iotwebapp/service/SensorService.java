@@ -35,15 +35,38 @@ public class SensorService {
     /**
      * Process and save sensor data from ESP32 payload.
      * Converts flat ESP32 payload to multiple SensorData records.
-     * Maps ESP32 field names (mq135, mq7, mq2) to database sensor names.
+     * Maps ESP32 field names to database sensor codes.
      * ALL sensors from the same payload share the SAME timestamp (saved together).
      */
     public void saveSensorDataFromESP32(ESP32SensorPayload payload) {
         List<SensorData> dataList = new ArrayList<>();
         
-        String deviceId = payload.getDeviceId();
-        if (deviceId == null || deviceId.isEmpty()) {
+        String deviceIdStr = payload.getDeviceId();
+        if (deviceIdStr == null || deviceIdStr.isEmpty()) {
             throw new RuntimeException("deviceId is required");
+        }
+        
+        // Convert deviceId from String to Integer
+        // If deviceId is a number, parse it; otherwise, try to find device by name or create it
+        Integer deviceId;
+        try {
+            deviceId = Integer.parseInt(deviceIdStr);
+        } catch (NumberFormatException e) {
+            // If deviceId is not a number, try to find device by name
+            DeviceInfo device = findDeviceByName(deviceIdStr);
+            if (device != null) {
+                deviceId = device.getDeviceId();
+            } else {
+                // Create new device if not found
+                DeviceInfo newDevice = new DeviceInfo();
+                newDevice.setDeviceName(deviceIdStr);
+                newDevice.setLocation("Unknown");
+                newDevice.setStatus("Active");
+                deviceId = deviceInfoDAO.insert(newDevice);
+                if (deviceId == null) {
+                    throw new RuntimeException("Failed to create device: " + deviceIdStr);
+                }
+            }
         }
         
         // CRITICAL: Create ONE timestamp for ALL sensors from the same payload
@@ -53,27 +76,28 @@ public class SensorService {
         System.out.println("[SensorService] Saving sensor data batch for device: " + deviceId + " at timestamp: " + timestamp);
         
         // Map each sensor reading to a SensorData record
-        // Note: Database uses names like "Temperature", "Gas MQ1", etc.
+        // New schema uses SensorCode: TEMP_DHT11, HUM_DHT11, MQ2, MQ7, MQ135, GP2Y10
         if (payload.getTemperature() != null) {
-            dataList.add(createSensorData(deviceId, "Temperature", payload.getTemperature(), timestamp));
+            dataList.add(createSensorData(deviceId, "TEMP_DHT11", payload.getTemperature(), timestamp));
         }
         if (payload.getHumidity() != null) {
-            dataList.add(createSensorData(deviceId, "Humidity", payload.getHumidity(), timestamp));
+            dataList.add(createSensorData(deviceId, "HUM_DHT11", payload.getHumidity(), timestamp));
         }
-        // Map mq135 (ESP32) -> "Gas MQ1" (database)
-        if (payload.getMq135() != null) {
-            dataList.add(createSensorData(deviceId, "Gas MQ1", payload.getMq135(), timestamp));
-        }
-        // Map mq7 (ESP32) -> "Gas MQ2" (database)
-        if (payload.getMq7() != null) {
-            dataList.add(createSensorData(deviceId, "Gas MQ2", payload.getMq7(), timestamp));
-        }
-        // Map mq2 (ESP32) -> "Gas MQ3" (database)
+        // Map mq2 (ESP32) -> MQ2 (database)
         if (payload.getMq2() != null) {
-            dataList.add(createSensorData(deviceId, "Gas MQ3", payload.getMq2(), timestamp));
+            dataList.add(createSensorData(deviceId, "MQ2", payload.getMq2(), timestamp));
         }
+        // Map mq7 (ESP32) -> MQ7 (database)
+        if (payload.getMq7() != null) {
+            dataList.add(createSensorData(deviceId, "MQ7", payload.getMq7(), timestamp));
+        }
+        // Map mq135 (ESP32) -> MQ135 (database)
+        if (payload.getMq135() != null) {
+            dataList.add(createSensorData(deviceId, "MQ135", payload.getMq135(), timestamp));
+        }
+        // Map dust (ESP32) -> GP2Y10 (database)
         if (payload.getDust() != null) {
-            dataList.add(createSensorData(deviceId, "Dust Density", payload.getDust(), timestamp));
+            dataList.add(createSensorData(deviceId, "GP2Y10", payload.getDust(), timestamp));
         }
         
         // Save all data in batch with the SAME timestamp
@@ -90,74 +114,52 @@ public class SensorService {
     }
 
     /**
-     * Helper method to create SensorData from sensor name (database name) and value.
-     * Sets all required fields including defaults for foreign key constraints.
-     * Uses the provided timestamp to ensure all sensors from the same payload have the same timestamp.
+     * Helper method to find device by name.
      */
-    private SensorData createSensorData(String deviceId, String sensorName, Double value, LocalDateTime timestamp) {
-        SensorType sensorType = sensorTypeDAO.findByName(sensorName);
-        if (sensorType == null) {
-            throw new RuntimeException("Sensor type not found: " + sensorName);
+    private DeviceInfo findDeviceByName(String deviceName) {
+        List<DeviceInfo> devices = deviceInfoDAO.findAll();
+        for (DeviceInfo device : devices) {
+            if (deviceName.equals(device.getDeviceName())) {
+                return device;
+            }
         }
-        
-        // Use the provided timestamp (same for all sensors from the same payload)
-        SensorData data = new SensorData();
-        data.setDeviceId(deviceId);
-        data.setSensorTypeId(sensorType.getSensorTypeId());
-        data.setSensorValue(value);
-        data.setValue(value); // Also set 'value' field (duplicate but required by DB)
-        data.setSensorIndex(0); // CRITICAL: Must match DeviceSensor.sensor_index (default is 0)
-        data.setIsValidated(true); // Default to validated
-        data.setCreatedAt(timestamp);
-        data.setTs(timestamp); // Set ts timestamp (same for all sensors)
-        data.setTimestamp(timestamp); // Set timestamp (same for all sensors)
-        return data;
+        return null;
     }
 
     /**
-     * Map database sensor name to standardized name for dashboard/API.
-     * Database: "Temperature", "Gas MQ1" -> Dashboard: "temperature", "mq1"
+     * Helper method to create SensorData from sensor code and value.
+     * Uses the provided timestamp to ensure all sensors from the same payload have the same timestamp.
      */
-    private String mapDatabaseNameToStandard(String dbName) {
-        if (dbName == null) return null;
-        
-        // Map database names to standard lowercase names
-        switch (dbName.toLowerCase()) {
-            case "temperature":
-                return "temperature";
-            case "humidity":
-                return "humidity";
-            case "gas mq1":
-                return "mq1";
-            case "gas mq2":
-                return "mq2";
-            case "gas mq3":
-                return "mq3";
-            case "dust density":
-                return "dust";
-            default:
-                return dbName.toLowerCase();
+    private SensorData createSensorData(Integer deviceId, String sensorCode, Double value, LocalDateTime timestamp) {
+        SensorType sensorType = sensorTypeDAO.findByCode(sensorCode);
+        if (sensorType == null) {
+            throw new RuntimeException("Sensor type not found with code: " + sensorCode);
         }
+        
+        // Use the provided timestamp (same for all sensors from the same payload)
+        SensorData data = new SensorData(deviceId, sensorType.getSensorTypeId(), value);
+        data.setCreatedAt(timestamp);
+        return data;
     }
 
     /**
      * Get recent sensor data for a device.
      */
-    public List<SensorData> getRecentData(String deviceId, int limit) {
+    public List<SensorData> getRecentData(Integer deviceId, int limit) {
         return sensorDataDAO.findLatestByDevice(deviceId, limit);
     }
 
     /**
      * Get sensor data within time range.
      */
-    public List<SensorData> getDataByTimeRange(String deviceId, LocalDateTime startTime, LocalDateTime endTime) {
+    public List<SensorData> getDataByTimeRange(Integer deviceId, LocalDateTime startTime, LocalDateTime endTime) {
         return sensorDataDAO.findByTimeRange(deviceId, startTime, endTime);
     }
 
     /**
      * Get latest reading for a specific sensor type.
      */
-    public SensorData getLatestBySensorType(String deviceId, Integer sensorTypeId) {
+    public SensorData getLatestBySensorType(Integer deviceId, Integer sensorTypeId) {
         return sensorDataDAO.findLatestBySensorType(deviceId, sensorTypeId);
     }
 
@@ -169,7 +171,7 @@ public class SensorService {
         EntityManager em = JPAUtil.getEntityManager();
         try {
             TypedQuery<SensorData> query = em.createQuery(
-                "SELECT sd FROM SensorData sd ORDER BY sd.timestamp DESC", 
+                "SELECT sd FROM SensorData sd ORDER BY sd.createdAt DESC", 
                 SensorData.class);
             query.setFirstResult(offset);
             query.setMaxResults(pageSize);
@@ -179,5 +181,3 @@ public class SensorService {
         }
     }
 }
-
-

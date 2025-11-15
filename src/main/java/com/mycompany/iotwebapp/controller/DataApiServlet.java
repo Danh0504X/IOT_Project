@@ -2,7 +2,9 @@ package com.mycompany.iotwebapp.controller;
 
 import com.mycompany.iotwebapp.dao.SensorDataDAO;
 import com.mycompany.iotwebapp.dao.DeviceInfoDAO;
+import com.mycompany.iotwebapp.dao.SensorTypeDAO;
 import com.mycompany.iotwebapp.model.SensorData;
+import com.mycompany.iotwebapp.model.SensorType;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -22,11 +24,13 @@ public class DataApiServlet extends HttpServlet {
 
     private SensorDataDAO sensorDataDAO;
     private DeviceInfoDAO deviceInfoDAO;
+    private SensorTypeDAO sensorTypeDAO;
 
     @Override
     public void init() throws ServletException {
         sensorDataDAO = new SensorDataDAO();
         deviceInfoDAO = new DeviceInfoDAO();
+        sensorTypeDAO = new SensorTypeDAO();
     }
 
     @Override
@@ -55,7 +59,17 @@ public class DataApiServlet extends HttpServlet {
 
             JSONObject json = new JSONObject(jsonString);
 
-            String deviceId = json.optString("deviceId", "DEVICE001");
+            String deviceIdStr = json.optString("deviceId", "1");
+            
+            // Convert deviceId to Integer
+            Integer deviceId;
+            try {
+                deviceId = Integer.parseInt(deviceIdStr);
+            } catch (NumberFormatException e) {
+                // If deviceId is not a number, try to find device by name or default to 1
+                System.out.println("[DataApiServlet] Warning: deviceId '" + deviceIdStr + "' is not a number, using default deviceId=1");
+                deviceId = 1;
+            }
             
             // CRITICAL: Ensure device exists in database before saving sensor data
             // This prevents FOREIGN KEY constraint violation
@@ -71,23 +85,49 @@ public class DataApiServlet extends HttpServlet {
             LocalDateTime now = LocalDateTime.now();
             int savedCount = 0;
 
-            if (json.has("temperature"))
-                if (saveSensorData(deviceId, 1, json.getDouble("temperature"), now)) savedCount++;
+            // Map ESP32 field names to SensorType IDs based on new schema
+            // SensorType IDs: 1=TEMP_DHT11, 2=HUM_DHT11, 3=MQ2, 4=MQ7, 5=MQ135, 6=GP2Y10
+            if (json.has("temperature")) {
+                Integer sensorTypeId = getSensorTypeIdByCode("TEMP_DHT11");
+                if (sensorTypeId != null && saveSensorData(deviceId, sensorTypeId, json.getDouble("temperature"), now)) {
+                    savedCount++;
+                }
+            }
 
-            if (json.has("humidity"))
-                if (saveSensorData(deviceId, 2, json.getDouble("humidity"), now)) savedCount++;
+            if (json.has("humidity")) {
+                Integer sensorTypeId = getSensorTypeIdByCode("HUM_DHT11");
+                if (sensorTypeId != null && saveSensorData(deviceId, sensorTypeId, json.getDouble("humidity"), now)) {
+                    savedCount++;
+                }
+            }
 
-            if (json.has("mq135"))
-                if (saveSensorData(deviceId, 3, json.getDouble("mq135"), now)) savedCount++;
+            if (json.has("mq135")) {
+                Integer sensorTypeId = getSensorTypeIdByCode("MQ135");
+                if (sensorTypeId != null && saveSensorData(deviceId, sensorTypeId, json.getDouble("mq135"), now)) {
+                    savedCount++;
+                }
+            }
 
-            if (json.has("mq7"))
-                if (saveSensorData(deviceId, 4, json.getDouble("mq7"), now)) savedCount++;
+            if (json.has("mq7")) {
+                Integer sensorTypeId = getSensorTypeIdByCode("MQ7");
+                if (sensorTypeId != null && saveSensorData(deviceId, sensorTypeId, json.getDouble("mq7"), now)) {
+                    savedCount++;
+                }
+            }
 
-            if (json.has("mq2"))
-                if (saveSensorData(deviceId, 5, json.getDouble("mq2"), now)) savedCount++;
+            if (json.has("mq2")) {
+                Integer sensorTypeId = getSensorTypeIdByCode("MQ2");
+                if (sensorTypeId != null && saveSensorData(deviceId, sensorTypeId, json.getDouble("mq2"), now)) {
+                    savedCount++;
+                }
+            }
 
-            if (json.has("dust"))
-                if (saveSensorData(deviceId, 6, json.getDouble("dust"), now)) savedCount++;
+            if (json.has("dust")) {
+                Integer sensorTypeId = getSensorTypeIdByCode("GP2Y10");
+                if (sensorTypeId != null && saveSensorData(deviceId, sensorTypeId, json.getDouble("dust"), now)) {
+                    savedCount++;
+                }
+            }
 
             response.setStatus(HttpServletResponse.SC_OK);
             out.write(String.format(
@@ -106,12 +146,23 @@ public class DataApiServlet extends HttpServlet {
         }
     }
 
-    private boolean saveSensorData(String deviceId, int sensorTypeId, double value, LocalDateTime timestamp) {
+    /**
+     * Get SensorType ID by SensorCode.
+     */
+    private Integer getSensorTypeIdByCode(String sensorCode) {
+        try {
+            SensorType sensorType = sensorTypeDAO.findByCode(sensorCode);
+            return sensorType != null ? sensorType.getSensorTypeId() : null;
+        } catch (Exception e) {
+            System.err.println("[DataApiServlet] Error finding sensor type for code: " + sensorCode);
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private boolean saveSensorData(Integer deviceId, Integer sensorTypeId, double value, LocalDateTime timestamp) {
         try {
             SensorData data = new SensorData(deviceId, sensorTypeId, value);
-
-            data.setTs(timestamp);
-            data.setTimestamp(timestamp);
             data.setCreatedAt(timestamp);
 
             Long id = sensorDataDAO.insert(data);
@@ -134,11 +185,11 @@ public class DataApiServlet extends HttpServlet {
         PrintWriter out = response.getWriter();
         out.write("{"
                 + "\"status\":\"online\","
-                + "\"endpoint\":\"/api/data\","
+                + "\"endpoint\":\"/api/data-legacy\","
                 + "\"method\":\"POST\","
-                + "\"description\":\"Receive sensor data from ESP32\","
+                + "\"description\":\"Receive sensor data from ESP32 (Legacy endpoint)\","
                 + "\"format\":{"
-                + "\"deviceId\":\"string\","
+                + "\"deviceId\":\"string or number\","
                 + "\"temperature\":\"number\","
                 + "\"humidity\":\"number\","
                 + "\"mq135\":\"number\","

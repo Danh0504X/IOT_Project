@@ -1,17 +1,14 @@
 package com.mycompany.iotwebapp.model;
 
-import java.time.LocalDateTime;
-
 public class User {
     private Integer userId;
     private String username;
-    private String password;
-    private String fullName;
+    private String passwordHash;
     private String email;
+    private String fullName;
+    private String phone;
     private String role;
     private Boolean isActive;
-    private LocalDateTime createdAt;
-    private LocalDateTime lastLogin;
 
     // Constructors
     public User() {
@@ -42,12 +39,29 @@ public class User {
         this.username = username;
     }
 
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+    
+    // Convenience method for backward compatibility
     public String getPassword() {
-        return password;
+        return passwordHash;
     }
 
     public void setPassword(String password) {
-        this.password = password;
+        this.passwordHash = password;
+    }
+    
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
     public String getFullName() {
@@ -82,21 +96,6 @@ public class User {
         this.isActive = isActive;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getLastLogin() {
-        return lastLogin;
-    }
-
-    public void setLastLogin(LocalDateTime lastLogin) {
-        this.lastLogin = lastLogin;
-    }
 
     @Override
     public String toString() {

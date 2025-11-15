@@ -1,261 +1,306 @@
-USE [IOT_DB]
+drop database AirQualityManagement;
+CREATE DATABASE AirQualityManagement COLLATE Vietnamese_CI_AS;
 GO
-/****** Object:  Table [dbo].[DeviceCommand]    Script Date: 11/14/2025 6:18:13 PM ******/
-SET ANSI_NULLS ON
+USE AirQualityManagement;
 GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[DeviceCommand](
-	[id] [bigint] IDENTITY(1,1) NOT NULL,
-	[device_id] [varchar](64) NOT NULL,
-	[command_type] [varchar](64) NOT NULL,
-	[command_value] [varchar](64) NOT NULL,
-	[status] [varchar](16) NOT NULL,
-	[issued_at] [datetime2](7) NOT NULL,
-	[executed_at] [datetime2](7) NULL,
-PRIMARY KEY CLUSTERED 
-(
-	[id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-/****** Object:  Table [dbo].[DeviceInfo]    Script Date: 11/14/2025 6:18:13 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[DeviceInfo](
-	[device_id] [varchar](64) NOT NULL,
-	[device_name] [nvarchar](128) NOT NULL,
-	[status] [varchar](16) NOT NULL,
-	[install_date] [datetime2](7) NULL,
-	[latitude] [float] NULL,
-	[longitude] [float] NULL,
-	[created_at] [datetime2](7) NOT NULL,
-	[updated_at] [datetime2](7) NULL,
-PRIMARY KEY CLUSTERED 
-(
-	[device_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-/****** Object:  Table [dbo].[DeviceSensor]    Script Date: 11/14/2025 6:18:13 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[DeviceSensor](
-	[device_id] [varchar](64) NOT NULL,
-	[sensor_type_id] [int] NOT NULL,
-	[sensor_index] [int] NOT NULL,
-	[is_active] [bit] NOT NULL,
-	[installed_at] [datetime2](7) NOT NULL,
-PRIMARY KEY CLUSTERED 
-(
-	[device_id] ASC,
-	[sensor_type_id] ASC,
-	[sensor_index] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-/****** Object:  Table [dbo].[SensorData]    Script Date: 11/14/2025 6:18:13 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[SensorData](
-	[id] [bigint] IDENTITY(1,1) NOT NULL,
-	[device_id] [varchar](64) NOT NULL,
-	[sensor_type_id] [int] NOT NULL,
-	[sensor_index] [int] NOT NULL,
-	[ts] [datetime2](7) NOT NULL,
-	[value] [float] NOT NULL,
-	[is_validated] [bit] NOT NULL,
-	[created_at] [datetime2](7) NOT NULL,
-	[sensor_value] [float] NOT NULL,
-	[timestamp] [datetime] NOT NULL,
-PRIMARY KEY CLUSTERED 
-(
-	[id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-/****** Object:  Table [dbo].[SensorDataAggregated]    Script Date: 11/14/2025 6:18:13 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[SensorDataAggregated](
-	[id] [bigint] IDENTITY(1,1) NOT NULL,
-	[device_id] [varchar](64) NOT NULL,
-	[sensor_type_id] [int] NOT NULL,
-	[aggregation_period] [varchar](16) NOT NULL,
-	[period_start] [datetime2](7) NOT NULL,
-	[period_end] [datetime2](7) NOT NULL,
-	[avg_value] [float] NOT NULL,
-	[created_at] [datetime2](7) NOT NULL,
-PRIMARY KEY CLUSTERED 
-(
-	[id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-/****** Object:  Table [dbo].[SensorSettings]    Script Date: 11/14/2025 6:18:13 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[SensorSettings](
-	[id] [bigint] IDENTITY(1,1) NOT NULL,
-	[device_id] [varchar](64) NOT NULL,
-	[sensor_type_id] [int] NOT NULL,
-	[sensitivity] [float] NOT NULL,
-	[calibration_factor] [float] NULL,
-	[threshold_value] [float] NULL,
-	[updated_at] [datetime2](7) NOT NULL,
-	[created_at] [datetime2](7) NOT NULL,
-PRIMARY KEY CLUSTERED 
-(
-	[id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-/****** Object:  Table [dbo].[SensorType]    Script Date: 11/14/2025 6:18:13 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[SensorType](
-	[sensor_type_id] [int] IDENTITY(1,1) NOT NULL,
-	[sensor_code] [varchar](32) NOT NULL,
-	[name] [nvarchar](128) NOT NULL,
-	[unit] [varchar](20) NULL,
-	[data_type] [varchar](16) NOT NULL,
-	[is_active] [bit] NOT NULL,
-	[created_at] [datetime2](7) NOT NULL,
-	[updated_at] [datetime2](7) NULL,
-	[description] [varchar](255) NULL,
-PRIMARY KEY CLUSTERED 
-(
-	[sensor_type_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-INSERT [dbo].[DeviceInfo] ([device_id], [device_name], [status], [install_date], [latitude], [longitude], [created_at], [updated_at]) VALUES (N'DEVICE001', N'Test Device 001', N'ACTIVE', NULL, NULL, NULL, CAST(N'2025-11-14T10:43:28.1366667' AS DateTime2), NULL)
-GO
-INSERT [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index], [is_active], [installed_at]) VALUES (N'DEVICE001', 1, 0, 1, CAST(N'2025-11-14T10:43:58.2100000' AS DateTime2))
-INSERT [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index], [is_active], [installed_at]) VALUES (N'DEVICE001', 2, 0, 1, CAST(N'2025-11-14T10:43:58.2100000' AS DateTime2))
-INSERT [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index], [is_active], [installed_at]) VALUES (N'DEVICE001', 3, 0, 1, CAST(N'2025-11-14T10:43:58.2100000' AS DateTime2))
-INSERT [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index], [is_active], [installed_at]) VALUES (N'DEVICE001', 4, 0, 1, CAST(N'2025-11-14T10:43:58.2100000' AS DateTime2))
-INSERT [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index], [is_active], [installed_at]) VALUES (N'DEVICE001', 5, 0, 1, CAST(N'2025-11-14T10:43:58.2100000' AS DateTime2))
-INSERT [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index], [is_active], [installed_at]) VALUES (N'DEVICE001', 6, 0, 1, CAST(N'2025-11-14T10:43:58.2100000' AS DateTime2))
-GO
-SET IDENTITY_INSERT [dbo].[SensorData] ON 
 
-INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (8, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 25.1, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 25.1, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
-INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (9, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:55:44.4300000' AS DateTime2), 25.4, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 25.4, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
-INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (10, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:54:44.4300000' AS DateTime2), 25.8, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 25.8, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
-INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (11, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:53:44.4300000' AS DateTime2), 26.2, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 26.2, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
-INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (12, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:52:44.4300000' AS DateTime2), 26.5, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 26.5, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
-INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (13, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:51:44.4300000' AS DateTime2), 26.9, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 26.9, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
-INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (14, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:50:44.4300000' AS DateTime2), 27.3, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 27.3, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
-INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (15, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:49:44.4300000' AS DateTime2), 27.6, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 27.6, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
-INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (16, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:48:44.4300000' AS DateTime2), 28.1, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 28.1, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
-INSERT [dbo].[SensorData] ([id], [device_id], [sensor_type_id], [sensor_index], [ts], [value], [is_validated], [created_at], [sensor_value], [timestamp]) VALUES (17, N'DEVICE001', 1, 0, CAST(N'2025-11-14T17:47:44.4300000' AS DateTime2), 28.4, 1, CAST(N'2025-11-14T17:56:44.4300000' AS DateTime2), 28.4, CAST(N'2025-11-14T17:56:44.430' AS DateTime))
-SET IDENTITY_INSERT [dbo].[SensorData] OFF
-GO
-SET IDENTITY_INSERT [dbo].[SensorType] ON 
+-- =====================================================
+-- 1. BẢNG NGƯỜI DÙNG & XÁC THỰC
+-- =====================================================
+CREATE TABLE [User] (
+    UserID INT IDENTITY(1,1) PRIMARY KEY,
+    Username NVARCHAR(50) UNIQUE NOT NULL,
+    Email NVARCHAR(100) UNIQUE NOT NULL,
+    PasswordHash NVARCHAR(255) NOT NULL, -- Lưu hash từ bcrypt hoặc SHA256
+    FullName NVARCHAR(100),
+    Phone NVARCHAR(20),
+    Role NVARCHAR(20) CHECK (Role IN (N'Admin', N'User')) DEFAULT N'User',
+    IsActive BIT DEFAULT 1,
+);
 
-INSERT [dbo].[SensorType] ([sensor_type_id], [sensor_code], [name], [unit], [data_type], [is_active], [created_at], [updated_at], [description]) VALUES (1, N'TEMP', N'Temperature', N'°C', N'FLOAT', 1, CAST(N'2025-11-14T10:43:49.6633333' AS DateTime2), NULL, NULL)
-INSERT [dbo].[SensorType] ([sensor_type_id], [sensor_code], [name], [unit], [data_type], [is_active], [created_at], [updated_at], [description]) VALUES (2, N'HUM', N'Humidity', N'%', N'FLOAT', 1, CAST(N'2025-11-14T10:43:49.6633333' AS DateTime2), NULL, NULL)
-INSERT [dbo].[SensorType] ([sensor_type_id], [sensor_code], [name], [unit], [data_type], [is_active], [created_at], [updated_at], [description]) VALUES (3, N'MQ1', N'Gas MQ1', N'ppm', N'FLOAT', 1, CAST(N'2025-11-14T10:43:49.6633333' AS DateTime2), NULL, NULL)
-INSERT [dbo].[SensorType] ([sensor_type_id], [sensor_code], [name], [unit], [data_type], [is_active], [created_at], [updated_at], [description]) VALUES (4, N'MQ2', N'Gas MQ2', N'ppm', N'FLOAT', 1, CAST(N'2025-11-14T10:43:49.6633333' AS DateTime2), NULL, NULL)
-INSERT [dbo].[SensorType] ([sensor_type_id], [sensor_code], [name], [unit], [data_type], [is_active], [created_at], [updated_at], [description]) VALUES (5, N'MQ3', N'Gas MQ3', N'ppm', N'FLOAT', 1, CAST(N'2025-11-14T10:43:49.6633333' AS DateTime2), NULL, NULL)
-INSERT [dbo].[SensorType] ([sensor_type_id], [sensor_code], [name], [unit], [data_type], [is_active], [created_at], [updated_at], [description]) VALUES (6, N'DUST', N'Dust Density', N'µg/m³', N'FLOAT', 1, CAST(N'2025-11-14T10:43:49.6633333' AS DateTime2), NULL, NULL)
-SET IDENTITY_INSERT [dbo].[SensorType] OFF
+CREATE TABLE PasswordResetToken (
+    TokenID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT NOT NULL FOREIGN KEY REFERENCES [User](UserID),
+    Token NVARCHAR(255) UNIQUE NOT NULL,
+    ExpiresAt DATETIME NOT NULL,
+    IsUsed BIT DEFAULT 0,
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
+
+-- =====================================================
+-- 2. BẢNG THIẾT BỊ
+-- =====================================================
+CREATE TABLE Device (
+    DeviceID INT IDENTITY(1,1) PRIMARY KEY,
+    DeviceName NVARCHAR(50) NOT NULL,
+    Location NVARCHAR(100),
+    Latitude DECIMAL(10, 8),
+    Longitude DECIMAL(11, 8),
+    Status NVARCHAR(20) CHECK (Status IN (N'Active', N'Inactive')) DEFAULT N'Active',
+    BatteryLevel FLOAT CHECK (BatteryLevel BETWEEN 0 AND 100),
+    InstallDate DATE DEFAULT GETDATE(),
+    LastUpdate DATETIME DEFAULT GETDATE()
+);
+
+INSERT INTO Device (DeviceName, Location, Latitude, Longitude, Status, BatteryLevel)
+VALUES
+(N'Device 1', N'FPTUniversityDaNang', 16.047079, 108.206230, N'Active', 100);
+
+-- =====================================================
+-- 3. BẢNG LOẠI CẢM BIẾN
+-- =====================================================
+CREATE TABLE SensorType (
+    SensorTypeID INT IDENTITY(1,1) PRIMARY KEY,
+    SensorName NVARCHAR(50) NOT NULL,
+    SensorCode NVARCHAR(20) UNIQUE NOT NULL,
+    Unit NVARCHAR(20),
+    Description NVARCHAR(200)
+);
+
+select* from SensorType
+INSERT INTO SensorType (SensorName, SensorCode, Unit, Description)
+VALUES
+-- DHT11 – Temperature
+(N'DHT11 - Nhiệt độ', 'TEMP_DHT11', N'°C', N'Cảm biến DHT11 đo nhiệt độ môi trường'),
+
+-- DHT11 – Humidity
+(N'DHT11 - Độ ẩm', 'HUM_DHT11', N'%', N'Cảm biến DHT11 đo độ ẩm không khí'),
+
+-- MQ2 – Gas / LPG / Khói
+(N'MQ2 - Gas/LPG', 'MQ2', N'ppm', N'Phát hiện khí Gas, LPG, khói và hơi cồn'),
+
+-- MQ7 – CO (Carbon Monoxide)
+(N'MQ7 - Khí CO', 'MQ7', N'ppm', N'Phát hiện khí CO gây ngạt'),
+
+-- MQ135 – Chất lượng không khí
+(N'MQ135 - Chất lượng không khí', 'MQ135', N'ppm', N'Đo chất lượng không khí: CO2, khói, khí độc'),
+
+-- GP2Y10 – Bụi mịn PM2.5
+(N'GP2Y10 - Bụi mịn PM2.5', 'GP2Y10', N'µg/m³', N'Đo bụi mịn PM2.5 trong không khí');
+
+-- =====================================================
+-- 4. BẢNG NGƯỠNG CẢNH BÁO
+-- =====================================================
+CREATE TABLE Threshold (
+    ThresholdID INT IDENTITY(1,1) PRIMARY KEY,
+    SensorTypeID INT NOT NULL FOREIGN KEY REFERENCES SensorType(SensorTypeID),
+    LevelName NVARCHAR(50) NOT NULL,
+    MinValue FLOAT NOT NULL,
+    MaxValue FLOAT NOT NULL,
+    AlertLevel INT CHECK (AlertLevel BETWEEN 0 AND 3),
+    Message NVARCHAR(300)
+);
+-- RÀNG BUỘC VALIDATION CHO THRESHOLD
+-- Để ngăn trường hợp nhập sai (Min > Max), thêm CHECK:
+ALTER TABLE Threshold
+ADD CONSTRAINT CK_Threshold_MinMax CHECK (MinValue < MaxValue);
+=
+-- Ngưỡng cho PM2.5
+INSERT INTO Threshold (SensorTypeID, LevelName, MinValue, MaxValue, AlertLevel, Message)
+VALUES
+(6, N'Tốt', 0, 12, 0, N'Không khí tốt'),
+(6, N'Trung bình', 12, 35, 1, N'Chấp nhận được'),
+(6, N'Kém', 35, 55,  2, N'Nhạy cảm nên hạn chế ra ngoài'),
+(6, N'Xấu', 55, 150,  2, N'Hạn chế hoạt động ngoài trời'),
+(6, N'Nguy hiểm', 150, 500,  3, N'KHẨN CẤP! Ở trong nhà');
+
+-- Ngưỡng cho CO
+INSERT INTO Threshold (SensorTypeID, LevelName, MinValue, MaxValue, AlertLevel, Message)
+VALUES
+(4, N'An toàn', 0, 50,  0, N'Nồng độ CO an toàn'),
+(4, N'Chú ý', 50, 200,  1, N'Kiểm tra thông gió'),
+(4, N'Nguy hiểm', 200, 800,  2, N'NGUY HIỂM! Tăng thông gió'),
+(4, N'Rất nguy hiểm', 800, 2000,  3, N'SƠ TÁN NGAY! Nguy cơ tử vong');
+
+-- Ngưỡng cho Gas
+INSERT INTO Threshold (SensorTypeID, LevelName, MinValue, MaxValue, AlertLevel, Message)
+VALUES
+(3, N'An toàn', 0, 300,  0, N'Không phát hiện gas'),
+(3, N'Chú ý', 300, 1000,  1, N'Có gas, kiểm tra nguồn'),
+(3, N'Rò rỉ', 1000, 5000, 2, N'RÒ RỈ GAS! Tắt nguồn ngay'),
+(3, N'Nguy cơ nổ', 5000, 10000,  3, N'CỰC NGUY HIỂM! Sơ tán ngay');
+
+-- Ngưỡng cho Nhiệt độ
+INSERT INTO Threshold (SensorTypeID, LevelName, MinValue, MaxValue, AlertLevel, Message)
+VALUES
+(1, N'Lạnh', -40, 18,  0, N'Nhiệt độ thấp'),
+(1, N'Bình thường', 18, 32, 0, N'Nhiệt độ thoải mái'),
+(1, N'Nóng', 32, 39,  1, N'Nhiệt độ cao'),
+(1, N'Rất nóng', 39, 80,  2, N'Cảnh báo say nóng');
+
+-- Ngưỡng cho Độ ẩm
+INSERT INTO Threshold (SensorTypeID, LevelName, MinValue, MaxValue, AlertLevel, Message)
+VALUES
+(2, N'Khô', 0, 30, 1, N'Không khí khô'),
+(2, N'Bình thường', 30, 70,  0, N'Độ ẩm tốt'),
+(2, N'Ẩm', 70, 100,  1, N'Độ ẩm cao');
+
+-- Ngưỡng cho MQ135 (Chất lượng không khí)
+INSERT INTO Threshold (SensorTypeID, LevelName, MinValue, MaxValue, AlertLevel, Message)
+VALUES
+(5, N'Tốt', 0, 200, 0, N'Chất lượng không khí tốt'),
+(5, N'Trung bình', 200, 400, 1, N'Chất lượng không khí trung bình'),
+(5, N'Kém', 400, 600, 2, N'Chất lượng không khí kém, nên thông gió'),
+(5, N'Xấu', 600, 1000, 2, N'Chất lượng không khí xấu, hạn chế ra ngoài'),
+(5, N'Nguy hiểm', 1000, 5000, 3, N'KHẨN CẤP! Chất lượng không khí nguy hiểm');
+
+-- ====================================================
+-- 5. BẢNG DỮ LIỆU CẢM BIẾN
+-- =====================================================
+CREATE TABLE SensorData (
+    DataID BIGINT IDENTITY(1,1) PRIMARY KEY,
+    DeviceID INT NOT NULL FOREIGN KEY REFERENCES Device(DeviceID),
+    SensorTypeID INT NOT NULL FOREIGN KEY REFERENCES SensorType(SensorTypeID),
+    Value FLOAT NOT NULL,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    
+    INDEX IX_Device_Time (DeviceID, CreatedAt DESC),
+    INDEX IX_Sensor_Time (SensorTypeID, CreatedAt DESC)
+);
+
+
+-
+
+-- =====================================================
+-- 6. BẢNG KẾT QUẢ AQI (Tính từ code web)
+-- =====================================================
+CREATE TABLE AQI_Result (
+    ID INT IDENTITY(1,1) PRIMARY KEY,
+    DeviceID INT NOT NULL FOREIGN KEY REFERENCES Device(DeviceID),
+    
+    -- Giá trị các cảm biến (snapshot tại thời điểm tính)
+    PM25 FLOAT,
+    CO FLOAT,
+    GAS FLOAT,
+    Temperature FLOAT,
+    Humidity FLOAT,
+    
+    -- Kết quả AQI (tính từ Java/Web)
+    AQI FLOAT NOT NULL,
+    AQI_Level NVARCHAR(50),
+    AQI_Color NVARCHAR(20),
+    MainPollutant NVARCHAR(50),
+    
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    INDEX IX_Device_Time (DeviceID, CreatedAt DESC)
+);
+
+-- =====================================================
+-- 7. BẢNG CẢNH BÁO
+-- =====================================================
+CREATE TABLE Alert (
+    AlertID INT IDENTITY(1,1) PRIMARY KEY,
+    DeviceID INT NOT NULL FOREIGN KEY REFERENCES Device(DeviceID),
+    SensorTypeID INT FOREIGN KEY REFERENCES SensorType(SensorTypeID),
+    AlertLevel INT CHECK (AlertLevel BETWEEN 1 AND 3),
+    Message NVARCHAR(300),
+    SensorValue FLOAT,
+    Status NVARCHAR(20) CHECK (Status IN (N'Mới', N'Đã xem', N'Đã xử lý')) DEFAULT N'Mới',
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    ResolvedAt DATETIME,
+    ResolvedBy INT FOREIGN KEY REFERENCES [User](UserID),
+    
+    INDEX IX_Status_Time (Status, CreatedAt DESC)
+);
+
+
+
+
+
+
+--BẢNG LƯU LỊCH SỬ CẬP NHẬT THRESHOLD
+--Khi người dùng thay đổi ngưỡng, cần lưu lại ai đổi – đổi lúc nào – và đổi từ giá trị bao nhiêu sang bao nhiêu.
+
+CREATE TABLE ThresholdUpdateLog (
+    LogID INT IDENTITY(1,1) PRIMARY KEY,
+    ThresholdID INT NOT NULL FOREIGN KEY REFERENCES Threshold(ThresholdID),
+    UpdatedBy INT NOT NULL FOREIGN KEY REFERENCES [User](UserID),
+    OldMinValue FLOAT,
+    OldMaxValue FLOAT,
+    OldLevelName NVARCHAR(50),
+    OldColor NVARCHAR(20),
+    OldAlertLevel INT,
+    OldMessage NVARCHAR(300),
+
+    NewMinValue FLOAT,
+    NewMaxValue FLOAT,
+    NewLevelName NVARCHAR(50),
+    NewColor NVARCHAR(20),
+    NewAlertLevel INT,
+    NewMessage NVARCHAR(300),
+
+    UpdatedAt DATETIME DEFAULT GETDATE()
+);
+
+
+
+
+
+--THÊM PROCEDURE ĐỂ UPDATE NGƯỠNG (có ghi log)
+--Procedure này đảm bảo khi update luôn lưu lịch sử tự động.
+
+CREATE PROCEDURE UpdateThreshold
+    @ThresholdID INT,
+    @LevelName NVARCHAR(50),
+    @MinValue FLOAT,
+    @MaxValue FLOAT,
+    @AlertLevel INT,
+    @Message NVARCHAR(300),
+    @UpdatedBy INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Kiểm tra tồn tại Threshold
+    IF NOT EXISTS (SELECT 1 FROM Threshold WHERE ThresholdID = @ThresholdID)
+    BEGIN
+        RAISERROR(N'ThresholdID không tồn tại.', 16, 1);
+        RETURN;
+    END;
+
+    -- Lấy giá trị cũ
+    DECLARE 
+        @OldMin FLOAT,
+        @OldMax FLOAT,
+        @OldLevelName NVARCHAR(50),
+        @OldAlertLevel INT,
+        @OldMessage NVARCHAR(300);
+
+    SELECT 
+        @OldMin = MinValue,
+        @OldMax = MaxValue,
+        @OldLevelName = LevelName,
+        @OldAlertLevel = AlertLevel,
+        @OldMessage = Message
+    FROM Threshold
+    WHERE ThresholdID = @ThresholdID;
+
+    -- Ghi log
+    INSERT INTO ThresholdUpdateLog (
+        ThresholdID, UpdatedBy,
+        OldMinValue, OldMaxValue, OldLevelName, OldAlertLevel, OldMessage,
+        NewMinValue, NewMaxValue, NewLevelName, NewAlertLevel, NewMessage,
+        UpdatedAt
+    )
+    VALUES (
+        @ThresholdID, @UpdatedBy,
+        @OldMin, @OldMax, @OldLevelName, @OldAlertLevel, @OldMessage,
+        @MinValue, @MaxValue, @LevelName, @AlertLevel, @Message,
+        GETDATE()
+    );
+
+    -- Cập nhật Threshold
+    UPDATE Threshold
+    SET
+        LevelName = @LevelName,
+        MinValue = @MinValue,
+        MaxValue = @MaxValue,
+        AlertLevel = @AlertLevel,
+        Message = @Message
+   
+    WHERE ThresholdID = @ThresholdID;
+END;
 GO
-SET ANSI_PADDING ON
-GO
-/****** Object:  Index [UQ__SensorTy__26193D80DA0C2B9A]    Script Date: 11/14/2025 6:18:13 PM ******/
-ALTER TABLE [dbo].[SensorType] ADD UNIQUE NONCLUSTERED 
-(
-	[sensor_code] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
-GO
-ALTER TABLE [dbo].[DeviceCommand] ADD  DEFAULT ('PENDING') FOR [status]
-GO
-ALTER TABLE [dbo].[DeviceCommand] ADD  DEFAULT (getutcdate()) FOR [issued_at]
-GO
-ALTER TABLE [dbo].[DeviceInfo] ADD  DEFAULT ('ACTIVE') FOR [status]
-GO
-ALTER TABLE [dbo].[DeviceInfo] ADD  DEFAULT (getutcdate()) FOR [created_at]
-GO
-ALTER TABLE [dbo].[DeviceSensor] ADD  DEFAULT ((0)) FOR [sensor_index]
-GO
-ALTER TABLE [dbo].[DeviceSensor] ADD  DEFAULT ((1)) FOR [is_active]
-GO
-ALTER TABLE [dbo].[DeviceSensor] ADD  DEFAULT (getutcdate()) FOR [installed_at]
-GO
-ALTER TABLE [dbo].[SensorData] ADD  DEFAULT ((0)) FOR [sensor_index]
-GO
-ALTER TABLE [dbo].[SensorData] ADD  DEFAULT ((0)) FOR [is_validated]
-GO
-ALTER TABLE [dbo].[SensorData] ADD  DEFAULT (getutcdate()) FOR [created_at]
-GO
-ALTER TABLE [dbo].[SensorData] ADD  DEFAULT (getdate()) FOR [timestamp]
-GO
-ALTER TABLE [dbo].[SensorDataAggregated] ADD  DEFAULT (getutcdate()) FOR [created_at]
-GO
-ALTER TABLE [dbo].[SensorSettings] ADD  DEFAULT (getutcdate()) FOR [updated_at]
-GO
-ALTER TABLE [dbo].[SensorSettings] ADD  DEFAULT (getutcdate()) FOR [created_at]
-GO
-ALTER TABLE [dbo].[SensorType] ADD  DEFAULT ('FLOAT') FOR [data_type]
-GO
-ALTER TABLE [dbo].[SensorType] ADD  DEFAULT ((1)) FOR [is_active]
-GO
-ALTER TABLE [dbo].[SensorType] ADD  DEFAULT (getutcdate()) FOR [created_at]
-GO
-ALTER TABLE [dbo].[DeviceCommand]  WITH CHECK ADD FOREIGN KEY([device_id])
-REFERENCES [dbo].[DeviceInfo] ([device_id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[DeviceSensor]  WITH CHECK ADD FOREIGN KEY([device_id])
-REFERENCES [dbo].[DeviceInfo] ([device_id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[DeviceSensor]  WITH CHECK ADD FOREIGN KEY([sensor_type_id])
-REFERENCES [dbo].[SensorType] ([sensor_type_id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[SensorData]  WITH CHECK ADD FOREIGN KEY([device_id])
-REFERENCES [dbo].[DeviceInfo] ([device_id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[SensorData]  WITH CHECK ADD FOREIGN KEY([sensor_type_id])
-REFERENCES [dbo].[SensorType] ([sensor_type_id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[SensorData]  WITH CHECK ADD FOREIGN KEY([device_id], [sensor_type_id], [sensor_index])
-REFERENCES [dbo].[DeviceSensor] ([device_id], [sensor_type_id], [sensor_index])
-GO
-ALTER TABLE [dbo].[SensorDataAggregated]  WITH CHECK ADD FOREIGN KEY([device_id])
-REFERENCES [dbo].[DeviceInfo] ([device_id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[SensorDataAggregated]  WITH CHECK ADD FOREIGN KEY([sensor_type_id])
-REFERENCES [dbo].[SensorType] ([sensor_type_id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[SensorSettings]  WITH CHECK ADD FOREIGN KEY([device_id])
-REFERENCES [dbo].[DeviceInfo] ([device_id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[SensorSettings]  WITH CHECK ADD FOREIGN KEY([sensor_type_id])
-REFERENCES [dbo].[SensorType] ([sensor_type_id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[DeviceInfo]  WITH CHECK ADD  CONSTRAINT [CK_DeviceInfo_status] CHECK  (([status]='ERROR' OR [status]='MAINTENANCE' OR [status]='INACTIVE' OR [status]='ACTIVE'))
-GO
-ALTER TABLE [dbo].[DeviceInfo] CHECK CONSTRAINT [CK_DeviceInfo_status]
-GO
+
+
+

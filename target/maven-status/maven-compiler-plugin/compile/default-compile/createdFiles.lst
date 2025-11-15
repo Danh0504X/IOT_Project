@@ -1,4 +1,3 @@
-com\mycompany\iotwebapp\dao\DeviceSensorDAO.class
 com\mycompany\iotwebapp\dao\UserDAO.class
 com\mycompany\iotwebapp\controller\LoginServlet.class
 com\mycompany\iotwebapp\dao\DBConnection.class
@@ -7,7 +6,6 @@ com\mycompany\iotwebapp\model\SensorType.class
 com\mycompany\iotwebapp\service\SensorService.class
 com\mycompany\iotwebapp\model\DashboardData.class
 com\mycompany\iotwebapp\dao\DeviceCommandDAO.class
-com\mycompany\iotwebapp\model\DeviceSensor.class
 com\mycompany\iotwebapp\model\ESP32SensorPayload.class
 com\mycompany\iotwebapp\controller\PollServlet.class
 com\mycompany\iotwebapp\controller\DataApiServlet.class
@@ -20,11 +18,9 @@ com\mycompany\iotwebapp\model\DeviceCommand.class
 com\mycompany\iotwebapp\model\DeviceInfo.class
 com\mycompany\iotwebapp\dao\SensorTypeDAO.class
 com\mycompany\iotwebapp\service\ThresholdService.class
-com\mycompany\iotwebapp\model\SensorSettings.class
+com\mycompany\iotwebapp\dao\ThresholdDAO.class
 com\mycompany\iotwebapp\model\User.class
 com\mycompany\iotwebapp\model\SensorData.class
 com\mycompany\iotwebapp\controller\ThresholdAdminServlet.class
-com\mycompany\iotwebapp\dao\SensorSettingsDAO.class
-com\mycompany\iotwebapp\model\SensorDataAggregated.class
 com\mycompany\iotwebapp\util\JPAUtil.class
 com\mycompany\iotwebapp\dao\DeviceInfoDAO.class

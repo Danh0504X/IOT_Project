@@ -1,78 +1,98 @@
 package com.mycompany.iotwebapp.model;
 
+/**
+ * Model class representing Threshold table.
+ */
 public class Threshold {
+    private Integer thresholdId;
+    private Integer sensorTypeId;
+    private String levelName;
+    private Float minValue;
+    private Float maxValue;
+    private Integer alertLevel;
+    private String message;
 
-    private int id;
-    private int deviceId;
-    private float tempLimit;
-    private float humidityLimit;
-    private float mq1Limit;
-    private float mq2Limit;
-    private float mq3Limit;
-    private float dustLimit;
-
-    public int getId() {
-        return id;
+    // Constructors
+    public Threshold() {
     }
 
-    public void setId(int id) {
-        this.id = id;
+    public Threshold(Integer thresholdId, Integer sensorTypeId, String levelName, Float minValue, Float maxValue, Integer alertLevel, String message) {
+        this.thresholdId = thresholdId;
+        this.sensorTypeId = sensorTypeId;
+        this.levelName = levelName;
+        this.minValue = minValue;
+        this.maxValue = maxValue;
+        this.alertLevel = alertLevel;
+        this.message = message;
     }
 
-    public int getDeviceId() {
-        return deviceId;
+    // Getters and Setters
+    public Integer getThresholdId() {
+        return thresholdId;
     }
 
-    public void setDeviceId(int deviceId) {
-        this.deviceId = deviceId;
+    public void setThresholdId(Integer thresholdId) {
+        this.thresholdId = thresholdId;
     }
 
-    public float getTempLimit() {
-        return tempLimit;
+    public Integer getSensorTypeId() {
+        return sensorTypeId;
     }
 
-    public void setTempLimit(float tempLimit) {
-        this.tempLimit = tempLimit;
+    public void setSensorTypeId(Integer sensorTypeId) {
+        this.sensorTypeId = sensorTypeId;
     }
 
-    public float getHumidityLimit() {
-        return humidityLimit;
+    public String getLevelName() {
+        return levelName;
     }
 
-    public void setHumidityLimit(float humidityLimit) {
-        this.humidityLimit = humidityLimit;
+    public void setLevelName(String levelName) {
+        this.levelName = levelName;
     }
 
-    public float getMq1Limit() {
-        return mq1Limit;
+    public Float getMinValue() {
+        return minValue;
     }
 
-    public void setMq1Limit(float mq1Limit) {
-        this.mq1Limit = mq1Limit;
+    public void setMinValue(Float minValue) {
+        this.minValue = minValue;
     }
 
-    public float getMq2Limit() {
-        return mq2Limit;
+    public Float getMaxValue() {
+        return maxValue;
     }
 
-    public void setMq2Limit(float mq2Limit) {
-        this.mq2Limit = mq2Limit;
+    public void setMaxValue(Float maxValue) {
+        this.maxValue = maxValue;
     }
 
-    public float getMq3Limit() {
-        return mq3Limit;
+    public Integer getAlertLevel() {
+        return alertLevel;
     }
 
-    public void setMq3Limit(float mq3Limit) {
-        this.mq3Limit = mq3Limit;
+    public void setAlertLevel(Integer alertLevel) {
+        this.alertLevel = alertLevel;
     }
 
-    public float getDustLimit() {
-        return dustLimit;
+    public String getMessage() {
+        return message;
     }
 
-    public void setDustLimit(float dustLimit) {
-        this.dustLimit = dustLimit;
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    @Override
+    public String toString() {
+        return "Threshold{" +
+                "thresholdId=" + thresholdId +
+                ", sensorTypeId=" + sensorTypeId +
+                ", levelName='" + levelName + '\'' +
+                ", minValue=" + minValue +
+                ", maxValue=" + maxValue +
+                ", alertLevel=" + alertLevel +
+                '}';
     }
 }
 

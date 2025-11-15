@@ -23,8 +23,8 @@ public class SensorDataDAO {
             tx.begin();
 
             // Gán timestamp nếu chưa có
-            if (data.getTimestamp() == null) {
-                data.setTimestamp(LocalDateTime.now());
+            if (data.getCreatedAt() == null) {
+                data.setCreatedAt(LocalDateTime.now());
             }
 
             em.persist(data);
@@ -56,8 +56,8 @@ public class SensorDataDAO {
             int count = 0;
             for (SensorData data : dataList) {
 
-                if (data.getTimestamp() == null) {
-                    data.setTimestamp(LocalDateTime.now());
+                if (data.getCreatedAt() == null) {
+                    data.setCreatedAt(LocalDateTime.now());
                 }
 
                 em.persist(data);
@@ -83,19 +83,20 @@ public class SensorDataDAO {
     /**
      * Lấy X record mới nhất của một thiết bị
      */
-    public List<SensorData> findLatestByDevice(String deviceId, int limit) {
+    public List<SensorData> findLatestByDevice(Integer deviceId, int limit) {
         EntityManager em = JPAUtil.getEntityManager();
 
         try {
             String jpql = "SELECT sd FROM SensorData sd " +
                     "WHERE sd.deviceId = :deviceId " +
-                    "ORDER BY sd.timestamp DESC";
+                    "ORDER BY sd.createdAt DESC";
 
             TypedQuery<SensorData> query = em.createQuery(jpql, SensorData.class);
             query.setParameter("deviceId", deviceId);
             query.setMaxResults(limit);
 
             List<SensorData> results = query.getResultList();
+            System.out.println("[SensorDataDAO] Found " + results.size() + " sensor data records for deviceId: " + deviceId);
 
             // Load SensorType info
             SensorTypeDAO typeDAO = new SensorTypeDAO();
@@ -104,6 +105,9 @@ public class SensorDataDAO {
                 if (st != null) {
                     sd.setSensorName(st.getSensorName());
                     sd.setUnit(st.getUnit());
+                    System.out.println("[SensorDataDAO] Loaded sensor info: typeId=" + sd.getSensorTypeId() + ", name='" + st.getSensorName() + "', value=" + sd.getValue());
+                } else {
+                    System.out.println("[SensorDataDAO] Warning: SensorType not found for typeId: " + sd.getSensorTypeId());
                 }
             }
 
@@ -118,13 +122,13 @@ public class SensorDataDAO {
     /**
      * Lấy bản ghi mới nhất theo loại cảm biến (1 sensor)
      */
-    public SensorData findLatestBySensorType(String deviceId, Integer sensorTypeId) {
+    public SensorData findLatestBySensorType(Integer deviceId, Integer sensorTypeId) {
         EntityManager em = JPAUtil.getEntityManager();
 
         try {
             String jpql = "SELECT sd FROM SensorData sd " +
                     "WHERE sd.deviceId = :deviceId AND sd.sensorTypeId = :typeId " +
-                    "ORDER BY sd.timestamp DESC";
+                    "ORDER BY sd.createdAt DESC";
 
             TypedQuery<SensorData> query = em.createQuery(jpql, SensorData.class);
             query.setParameter("deviceId", deviceId);
@@ -144,14 +148,14 @@ public class SensorDataDAO {
     /**
      * Query theo thời gian
      */
-    public List<SensorData> findByTimeRange(String deviceId, LocalDateTime start, LocalDateTime end) {
+    public List<SensorData> findByTimeRange(Integer deviceId, LocalDateTime start, LocalDateTime end) {
         EntityManager em = JPAUtil.getEntityManager();
 
         try {
             String jpql = "SELECT sd FROM SensorData sd " +
                     "WHERE sd.deviceId = :deviceId " +
-                    "AND sd.timestamp BETWEEN :start AND :end " +
-                    "ORDER BY sd.timestamp DESC";
+                    "AND sd.createdAt BETWEEN :start AND :end " +
+                    "ORDER BY sd.createdAt DESC";
 
             TypedQuery<SensorData> query = em.createQuery(jpql, SensorData.class);
             query.setParameter("deviceId", deviceId);
@@ -169,7 +173,7 @@ public class SensorDataDAO {
     /**
      * Đếm số record của thiết bị
      */
-    public long countByDevice(String deviceId) {
+    public long countByDevice(Integer deviceId) {
         EntityManager em = JPAUtil.getEntityManager();
 
         try {
@@ -198,7 +202,7 @@ public class SensorDataDAO {
             tx.begin();
 
             int deleted = em.createQuery(
-                            "DELETE FROM SensorData sd WHERE sd.timestamp < :beforeDate")
+                            "DELETE FROM SensorData sd WHERE sd.createdAt < :beforeDate")
                     .setParameter("beforeDate", before)
                     .executeUpdate();
 

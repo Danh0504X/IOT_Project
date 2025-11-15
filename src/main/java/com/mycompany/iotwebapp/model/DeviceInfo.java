@@ -1,29 +1,31 @@
 package com.mycompany.iotwebapp.model;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * Model class representing DeviceInfo table.
+ * Model class representing Device table.
  */
 public class DeviceInfo {
     private Integer deviceId;
     private String deviceName;
-    private String deviceType;
-    private String macAddress;
-    private String ipAddress;
     private String location;
+    private BigDecimal latitude;
+    private BigDecimal longitude;
     private String status;
-    private LocalDateTime registeredAt;
-    private LocalDateTime lastSeen;
+    private Float batteryLevel;
+    private LocalDate installDate;
+    private LocalDateTime lastUpdate;
 
     // Constructors
     public DeviceInfo() {
     }
 
-    public DeviceInfo(Integer deviceId, String deviceName, String deviceType) {
+    public DeviceInfo(Integer deviceId, String deviceName, String location) {
         this.deviceId = deviceId;
         this.deviceName = deviceName;
-        this.deviceType = deviceType;
+        this.location = location;
     }
 
     // Getters and Setters
@@ -43,36 +45,28 @@ public class DeviceInfo {
         this.deviceName = deviceName;
     }
 
-    public String getDeviceType() {
-        return deviceType;
-    }
-
-    public void setDeviceType(String deviceType) {
-        this.deviceType = deviceType;
-    }
-
-    public String getMacAddress() {
-        return macAddress;
-    }
-
-    public void setMacAddress(String macAddress) {
-        this.macAddress = macAddress;
-    }
-
-    public String getIpAddress() {
-        return ipAddress;
-    }
-
-    public void setIpAddress(String ipAddress) {
-        this.ipAddress = ipAddress;
-    }
-
     public String getLocation() {
         return location;
     }
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public BigDecimal getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(BigDecimal latitude) {
+        this.latitude = latitude;
+    }
+
+    public BigDecimal getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(BigDecimal longitude) {
+        this.longitude = longitude;
     }
 
     public String getStatus() {
@@ -83,20 +77,28 @@ public class DeviceInfo {
         this.status = status;
     }
 
-    public LocalDateTime getRegisteredAt() {
-        return registeredAt;
+    public Float getBatteryLevel() {
+        return batteryLevel;
     }
 
-    public void setRegisteredAt(LocalDateTime registeredAt) {
-        this.registeredAt = registeredAt;
+    public void setBatteryLevel(Float batteryLevel) {
+        this.batteryLevel = batteryLevel;
     }
 
-    public LocalDateTime getLastSeen() {
-        return lastSeen;
+    public LocalDate getInstallDate() {
+        return installDate;
     }
 
-    public void setLastSeen(LocalDateTime lastSeen) {
-        this.lastSeen = lastSeen;
+    public void setInstallDate(LocalDate installDate) {
+        this.installDate = installDate;
+    }
+
+    public LocalDateTime getLastUpdate() {
+        return lastUpdate;
+    }
+
+    public void setLastUpdate(LocalDateTime lastUpdate) {
+        this.lastUpdate = lastUpdate;
     }
 
     @Override
@@ -104,7 +106,7 @@ public class DeviceInfo {
         return "DeviceInfo{" +
                 "deviceId=" + deviceId +
                 ", deviceName='" + deviceName + '\'' +
-                ", deviceType='" + deviceType + '\'' +
+                ", location='" + location + '\'' +
                 ", status='" + status + '\'' +
                 '}';
     }

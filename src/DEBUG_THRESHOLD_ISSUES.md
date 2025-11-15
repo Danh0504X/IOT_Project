@@ -132,3 +132,4 @@ curl "http://192.168.137.1:8080/IoTWebApp/api/poll?deviceId=DEVICE001"
   - Code sẽ hiển thị warning "⚠ WARNING: Thresholds not loaded from server yet!"
 
 
+

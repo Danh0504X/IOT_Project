@@ -11,25 +11,19 @@ public class SensorType {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "sensor_type_id")
+    @Column(name = "SensorTypeID")
     private Integer sensorTypeId;
     
-    @Column(name = "sensor_code", length = 32)
+    @Column(name = "SensorCode", length = 20)
     private String sensorCode;
     
-    @Column(name = "name", nullable = false, length = 128)
+    @Column(name = "SensorName", nullable = false, length = 50)
     private String sensorName;
     
-    @Column(name = "unit", length = 20)
+    @Column(name = "Unit", length = 20)
     private String unit;
     
-    @Column(name = "data_type", length = 16)
-    private String dataType;
-    
-    @Column(name = "is_active")
-    private Boolean isActive;
-    
-    @Column(name = "description", length = 255)
+    @Column(name = "Description", length = 200)
     private String description;
 
     // Constructors
@@ -83,21 +77,6 @@ public class SensorType {
         this.sensorCode = sensorCode;
     }
 
-    public String getDataType() {
-        return dataType;
-    }
-
-    public void setDataType(String dataType) {
-        this.dataType = dataType;
-    }
-
-    public Boolean getIsActive() {
-        return isActive;
-    }
-
-    public void setIsActive(Boolean isActive) {
-        this.isActive = isActive;
-    }
 
     @Override
     public String toString() {
