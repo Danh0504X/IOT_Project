@@ -302,3 +302,4 @@ T=15s:  ESP32 đọc cảm biến (đã dùng ngưỡng mới: 35.0) ✅
 
 **Delay tối đa:** 10 giây (POLL_INTERVAL) để ESP32 nhận ngưỡng mới.
 
+

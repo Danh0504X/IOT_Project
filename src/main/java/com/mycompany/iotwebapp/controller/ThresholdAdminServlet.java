@@ -1,6 +1,7 @@
 package com.mycompany.iotwebapp.controller;
 
 import com.mycompany.iotwebapp.service.ThresholdService;
+import com.mycompany.iotwebapp.util.FileLogger;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -106,10 +107,14 @@ public class ThresholdAdminServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        FileLogger.separator();
+        FileLogger.info("=== THRESHOLD UPDATE REQUEST START ===");
+        
         Integer deviceId = 1;
         try {
             // Get deviceId from form (can be number or device name)
             String deviceIdStr = req.getParameter("deviceId");
+            FileLogger.info("Received POST request with deviceId: " + deviceIdStr);
             if (deviceIdStr != null && !deviceIdStr.isEmpty()) {
                 try {
                     deviceId = Integer.parseInt(deviceIdStr);
@@ -157,18 +162,34 @@ public class ThresholdAdminServlet extends HttpServlet {
             // Format: sensorName_levelIndex_minValue, sensorName_levelIndex_maxValue
             String[] sensorNames = {"temperature", "humidity", "mq1", "mq2", "mq3", "dust"};
             boolean hasUpdates = false;
+            boolean hasErrors = false;
+            StringBuilder errorDetails = new StringBuilder();
             
             // Get all threshold levels once (more efficient)
+            FileLogger.info("Loading all threshold levels from service...");
             Map<String, java.util.List<com.mycompany.iotwebapp.model.Threshold>> allLevels = service.getAllThresholdLevels();
+            FileLogger.info("Loaded " + (allLevels != null ? allLevels.size() : 0) + " sensor types");
+            
+            if (allLevels == null || allLevels.isEmpty()) {
+                String errorMsg = "No threshold levels loaded from service";
+                FileLogger.error(errorMsg);
+                System.err.println("[ThresholdAdminServlet] ✗ " + errorMsg);
+                resp.sendRedirect(req.getContextPath() + "/admin/thresholds?deviceId=" + deviceId + "&message=error");
+                return;
+            }
             
             for (String sensorName : sensorNames) {
+                FileLogger.debug("Processing sensor: " + sensorName);
                 // Get threshold levels for this sensor
                 java.util.List<com.mycompany.iotwebapp.model.Threshold> sensorThresholds = allLevels.get(sensorName);
                 
                 if (sensorThresholds == null || sensorThresholds.isEmpty()) {
+                    FileLogger.warn("No thresholds found for sensor: " + sensorName);
                     System.out.println("[ThresholdAdminServlet] ⚠ No thresholds found for sensor: " + sensorName);
                     continue;
                 }
+                
+                FileLogger.info("Found " + sensorThresholds.size() + " levels for sensor: " + sensorName);
                 
                 // Update each level
                 java.util.List<com.mycompany.iotwebapp.model.Threshold> updatedThresholds = new java.util.ArrayList<>();
@@ -177,65 +198,115 @@ public class ThresholdAdminServlet extends HttpServlet {
                     com.mycompany.iotwebapp.model.Threshold threshold = sensorThresholds.get(i);
                     
                     // Get form parameters: sensorName_levelIndex_minValue, sensorName_levelIndex_maxValue
-                    String minValueParam = req.getParameter(sensorName + "_" + i + "_minValue");
-                    String maxValueParam = req.getParameter(sensorName + "_" + i + "_maxValue");
+                    String paramNameMin = sensorName + "_" + i + "_minValue";
+                    String paramNameMax = sensorName + "_" + i + "_maxValue";
+                    String minValueParam = req.getParameter(paramNameMin);
+                    String maxValueParam = req.getParameter(paramNameMax);
+                    
+                    FileLogger.debug(String.format("  Level %d: %s=%s, %s=%s", i, paramNameMin, minValueParam, paramNameMax, maxValueParam));
                     
                     if (minValueParam != null && maxValueParam != null && 
-                        !minValueParam.isEmpty() && !maxValueParam.isEmpty()) {
+                        !minValueParam.trim().isEmpty() && !maxValueParam.trim().isEmpty()) {
                         try {
-                            Float minValue = Float.parseFloat(minValueParam);
-                            Float maxValue = Float.parseFloat(maxValueParam);
+                            Float minValue = Float.parseFloat(minValueParam.trim());
+                            Float maxValue = Float.parseFloat(maxValueParam.trim());
                             
                             // Validate: minValue < maxValue
                             if (minValue >= maxValue) {
-                                System.err.println("[ThresholdAdminServlet] ✗ Invalid range for " + sensorName + 
-                                                 " level " + i + ": minValue (" + minValue + ") >= maxValue (" + maxValue + ")");
+                                String errorMsg = sensorName + " level " + i + ": minValue (" + minValue + ") >= maxValue (" + maxValue + ")";
+                                System.err.println("[ThresholdAdminServlet] ✗ Invalid range for " + errorMsg);
+                                errorDetails.append(errorMsg).append("; ");
+                                hasErrors = true;
                                 continue;
                             }
                             
-                            // Update threshold values
-                            threshold.setMinValue(minValue);
-                            threshold.setMaxValue(maxValue);
+                            // Create a copy to avoid modifying the original (important for default thresholds)
+                            com.mycompany.iotwebapp.model.Threshold thresholdCopy = new com.mycompany.iotwebapp.model.Threshold();
+                            thresholdCopy.setThresholdId(threshold.getThresholdId()); // Preserve ID if exists
+                            thresholdCopy.setSensorTypeId(threshold.getSensorTypeId());
+                            thresholdCopy.setLevelName(threshold.getLevelName());
+                            thresholdCopy.setMinValue(minValue);
+                            thresholdCopy.setMaxValue(maxValue);
+                            thresholdCopy.setAlertLevel(threshold.getAlertLevel());
+                            thresholdCopy.setMessage(threshold.getMessage());
                             
-                            // Preserve LevelName, AlertLevel, Message if they exist
-                            // (These are set from defaults if thresholdId is null)
-                            
-                            updatedThresholds.add(threshold);
+                            updatedThresholds.add(thresholdCopy);
                             hasUpdates = true;
                             
-                            System.out.println("[ThresholdAdminServlet] ✓ Parsed " + sensorName + " level " + i + 
-                                             " (" + threshold.getLevelName() + "): " + minValue + " - " + maxValue +
-                                             (threshold.getThresholdId() != null ? " (UPDATE)" : " (INSERT NEW)"));
+                            String logMsg = String.format("✓ Parsed %s level %d (%s): %.2f - %.2f %s", 
+                                sensorName, i, threshold.getLevelName(), minValue, maxValue,
+                                threshold.getThresholdId() != null ? "(UPDATE ID=" + threshold.getThresholdId() + ")" : "(INSERT NEW)");
+                            FileLogger.info(logMsg);
+                            System.out.println("[ThresholdAdminServlet] " + logMsg);
                         } catch (NumberFormatException e) {
-                            System.err.println("[ThresholdAdminServlet] ✗ Invalid number format for " + sensorName + 
-                                             " level " + i + ": min=" + minValueParam + ", max=" + maxValueParam);
+                            String errorMsg = sensorName + " level " + i + ": invalid number format (min=" + minValueParam + ", max=" + maxValueParam + ")";
+                            FileLogger.error(errorMsg, e);
+                            System.err.println("[ThresholdAdminServlet] ✗ " + errorMsg);
+                            errorDetails.append(errorMsg).append("; ");
+                            hasErrors = true;
                         }
+                    } else {
+                        System.out.println("[ThresholdAdminServlet] ⚠ Missing parameters for " + sensorName + " level " + i + 
+                                         " (minValueParam=" + minValueParam + ", maxValueParam=" + maxValueParam + ")");
                     }
                 }
                 
                 // Update all levels for this sensor
                 if (!updatedThresholds.isEmpty()) {
-                    service.updateAllThresholdLevels(sensorName, updatedThresholds, updatedBy);
+                    FileLogger.info("Attempting to update " + updatedThresholds.size() + " levels for sensor: " + sensorName);
+                    try {
+                        service.updateAllThresholdLevels(sensorName, updatedThresholds, updatedBy);
+                        String successMsg = "✅ Successfully updated " + updatedThresholds.size() + " levels for " + sensorName;
+                        FileLogger.info(successMsg);
+                        System.out.println("[ThresholdAdminServlet] " + successMsg);
+                    } catch (Exception e) {
+                        String errorMsg = "Failed to update " + sensorName + ": " + e.getMessage();
+                        FileLogger.error(errorMsg, e);
+                        System.err.println("[ThresholdAdminServlet] ✗ " + errorMsg);
+                        errorDetails.append(errorMsg).append("; ");
+                        hasErrors = true;
+                        e.printStackTrace();
+                    }
+                } else {
+                    FileLogger.warn("No updated thresholds to save for sensor: " + sensorName);
                 }
             }
 
             if (!hasUpdates) {
-                System.err.println("[ThresholdAdminServlet] ✗ No valid threshold values provided");
+                String errorMsg = "No valid threshold values provided";
+                FileLogger.error(errorMsg);
+                System.err.println("[ThresholdAdminServlet] ✗ " + errorMsg);
+                resp.sendRedirect(req.getContextPath() + "/admin/thresholds?deviceId=" + deviceId + "&message=error");
+                return;
+            }
+            
+            if (hasErrors) {
+                String errorMsg = "Some errors occurred during update: " + errorDetails.toString();
+                FileLogger.error(errorMsg);
+                System.err.println("[ThresholdAdminServlet] ✗ " + errorMsg);
                 resp.sendRedirect(req.getContextPath() + "/admin/thresholds?deviceId=" + deviceId + "&message=error");
                 return;
             }
 
-            System.out.println("[ThresholdAdminServlet] ✅ Successfully updated thresholds for device: " + deviceId);
+            String successMsg = "✅ Successfully updated thresholds for device: " + deviceId;
+            FileLogger.info(successMsg);
+            FileLogger.info("=== THRESHOLD UPDATE REQUEST END (SUCCESS) ===");
+            System.out.println("[ThresholdAdminServlet] " + successMsg);
 
             // Redirect with success message
             resp.sendRedirect(req.getContextPath() + "/admin/thresholds?deviceId=" + deviceId + "&message=success");
             
         } catch (NumberFormatException e) {
-            System.err.println("[ThresholdAdminServlet] ✗ Number format error: " + e.getMessage());
+            String errorMsg = "Number format error: " + e.getMessage();
+            FileLogger.error(errorMsg, e);
+            System.err.println("[ThresholdAdminServlet] ✗ " + errorMsg);
             e.printStackTrace();
             resp.sendRedirect(req.getContextPath() + "/admin/thresholds?deviceId=" + deviceId + "&message=error");
         } catch (Exception e) {
-            System.err.println("[ThresholdAdminServlet] ✗ Error updating thresholds: " + e.getMessage());
+            String errorMsg = "Error updating thresholds: " + e.getMessage();
+            FileLogger.error(errorMsg, e);
+            FileLogger.info("=== THRESHOLD UPDATE REQUEST END (ERROR) ===");
+            System.err.println("[ThresholdAdminServlet] ✗ " + errorMsg);
             e.printStackTrace();
             resp.sendRedirect(req.getContextPath() + "/admin/thresholds?deviceId=" + deviceId + "&message=error");
         }

@@ -330,7 +330,7 @@
                 </div>
                 <div class="col-md-2">
                     <div class="metric-card h-100">
-                        <span class="text-uppercase text-secondary text-opacity-75 small">Air Quality</span>
+                        <span class="text-uppercase text-secondary text-opacity-75 small">Pm2.5</span>
                         <h2 class="display-6 fw-bold mt-2">
                             <fmt:formatNumber value="${sensorData[0].dust}" maxFractionDigits="1"/><span class="fs-5 fw-semibold"> µg/m³</span>
                         </h2>
@@ -524,9 +524,9 @@
                             <th>Device</th>
                             <th>Temp (°C)</th>
                             <th>Humidity (%)</th>
-                            <th>MQ1</th>
+                            <th>MQ135</th>
+                            <th>MQ7</th>
                             <th>MQ2</th>
-                            <th>MQ3</th>
                             <th>Dust (µg/m³)</th>
                             <th>AQI</th>
                             <th>AQI Level</th>

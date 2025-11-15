@@ -6,6 +6,7 @@ import com.mycompany.iotwebapp.dao.DeviceCommandDAO;
 import com.mycompany.iotwebapp.model.Threshold;
 import com.mycompany.iotwebapp.model.SensorType;
 import com.mycompany.iotwebapp.model.DeviceCommand;
+import com.mycompany.iotwebapp.util.FileLogger;
 
 import java.util.HashMap;
 import java.util.List;
@@ -465,51 +466,132 @@ public class ThresholdService {
      * @param sensorName Standard sensor name (e.g., "temperature", "humidity")
      * @param thresholds List of Threshold objects with updated values
      * @param updatedBy User ID who made the update
+     * @throws RuntimeException if update fails
      */
     public void updateAllThresholdLevels(String sensorName, List<Threshold> thresholds, Integer updatedBy) {
+        FileLogger.separator();
+        FileLogger.info("[ThresholdService] Updating all threshold levels for sensor: " + sensorName);
+        FileLogger.info("[ThresholdService] Number of levels to update: " + (thresholds != null ? thresholds.size() : 0));
+        FileLogger.info("[ThresholdService] UpdatedBy User ID: " + updatedBy);
+        System.out.println("[ThresholdService] ========================================");
         System.out.println("[ThresholdService] Updating all threshold levels for sensor: " + sensorName);
+        System.out.println("[ThresholdService] Number of levels to update: " + (thresholds != null ? thresholds.size() : 0));
         
         if (thresholds == null || thresholds.isEmpty()) {
-            System.out.println("[ThresholdService] ⚠ No thresholds provided for " + sensorName);
-            return;
+            String errorMsg = "No thresholds provided for " + sensorName;
+            FileLogger.error(errorMsg);
+            System.out.println("[ThresholdService] ⚠ " + errorMsg);
+            throw new RuntimeException(errorMsg);
         }
         
         // Get sensor type ID
         String sensorCode = mapStandardNameToSensorCode(sensorName);
         if (sensorCode == null) {
-            System.err.println("[ThresholdService] ✗ Unknown sensor name: " + sensorName);
-            return;
+            String errorMsg = "Unknown sensor name: " + sensorName;
+            FileLogger.error(errorMsg);
+            System.err.println("[ThresholdService] ✗ " + errorMsg);
+            throw new RuntimeException(errorMsg);
         }
+        
+        FileLogger.info("[ThresholdService] Mapped sensor name '" + sensorName + "' to sensor code: " + sensorCode);
         
         SensorType sensorType = sensorTypeDAO.findByCode(sensorCode);
         if (sensorType == null) {
-            System.err.println("[ThresholdService] ✗ SensorType not found for code: " + sensorCode);
-            return;
+            String errorMsg = "SensorType not found for code: " + sensorCode + " (sensor name: " + sensorName + ")";
+            FileLogger.error(errorMsg);
+            System.err.println("[ThresholdService] ✗ " + errorMsg);
+            throw new RuntimeException(errorMsg);
         }
         
+        String infoMsg = "Found SensorType: ID=" + sensorType.getSensorTypeId() + ", Name='" + sensorType.getSensorName() + "'";
+        FileLogger.info(infoMsg);
+        System.out.println("[ThresholdService] " + infoMsg);
+        
+        int successCount = 0;
+        int failCount = 0;
+        
         for (Threshold threshold : thresholds) {
-            // Ensure sensorTypeId is set
-            threshold.setSensorTypeId(sensorType.getSensorTypeId());
-            
-            if (threshold.getThresholdId() != null) {
-                // Update existing threshold
-                boolean updated = thresholdDAO.update(threshold, updatedBy);
-                if (updated) {
-                    System.out.println("[ThresholdService] ✅ Updated threshold ID: " + threshold.getThresholdId() + 
-                                     ", Level: " + threshold.getLevelName());
-                } else {
-                    System.err.println("[ThresholdService] ✗ Failed to update threshold ID: " + threshold.getThresholdId());
+            try {
+                // Ensure sensorTypeId is set
+                threshold.setSensorTypeId(sensorType.getSensorTypeId());
+                
+                // Validate threshold values
+                if (threshold.getMinValue() == null || threshold.getMaxValue() == null) {
+                    System.err.println("[ThresholdService] ✗ Threshold has null min/max value: " + threshold.getLevelName());
+                    failCount++;
+                    continue;
                 }
-            } else {
-                // Insert new threshold
-                Integer thresholdId = thresholdDAO.insert(threshold);
-                if (thresholdId != null) {
-                    System.out.println("[ThresholdService] ✅ Created new threshold ID: " + thresholdId + 
-                                     ", Level: " + threshold.getLevelName());
-                } else {
-                    System.err.println("[ThresholdService] ✗ Failed to create new threshold");
+                
+                if (threshold.getMinValue() >= threshold.getMaxValue()) {
+                    System.err.println("[ThresholdService] ✗ Invalid range for " + threshold.getLevelName() + 
+                                     ": minValue (" + threshold.getMinValue() + ") >= maxValue (" + threshold.getMaxValue() + ")");
+                    failCount++;
+                    continue;
                 }
+                
+                if (threshold.getThresholdId() != null) {
+                    // Update existing threshold
+                    String updateMsg = String.format("Updating existing threshold ID: %d, Level: %s, Range: %.2f - %.2f", 
+                        threshold.getThresholdId(), threshold.getLevelName(), threshold.getMinValue(), threshold.getMaxValue());
+                    FileLogger.info("[ThresholdService] " + updateMsg);
+                    System.out.println("[ThresholdService] " + updateMsg);
+                    
+                    boolean updated = thresholdDAO.update(threshold, updatedBy);
+                    if (updated) {
+                        String successMsg = "✅ Updated threshold ID: " + threshold.getThresholdId() + ", Level: " + threshold.getLevelName();
+                        FileLogger.info("[ThresholdService] " + successMsg);
+                        System.out.println("[ThresholdService] " + successMsg);
+                        successCount++;
+                    } else {
+                        String errorMsg = "✗ Failed to update threshold ID: " + threshold.getThresholdId();
+                        FileLogger.error("[ThresholdService] " + errorMsg);
+                        System.err.println("[ThresholdService] " + errorMsg);
+                        failCount++;
+                    }
+                } else {
+                    // Insert new threshold
+                    String insertMsg = String.format("Inserting new threshold for SensorTypeID: %d, Level: %s, Range: %.2f - %.2f", 
+                        sensorType.getSensorTypeId(), threshold.getLevelName(), threshold.getMinValue(), threshold.getMaxValue());
+                    FileLogger.info("[ThresholdService] " + insertMsg);
+                    System.out.println("[ThresholdService] " + insertMsg);
+                    
+                    Integer thresholdId = thresholdDAO.insert(threshold);
+                    if (thresholdId != null) {
+                        String successMsg = "✅ Created new threshold ID: " + thresholdId + ", Level: " + threshold.getLevelName();
+                        FileLogger.info("[ThresholdService] " + successMsg);
+                        System.out.println("[ThresholdService] " + successMsg);
+                        successCount++;
+                    } else {
+                        String errorMsg = "✗ Failed to create new threshold for level: " + threshold.getLevelName();
+                        FileLogger.error("[ThresholdService] " + errorMsg);
+                        System.err.println("[ThresholdService] " + errorMsg);
+                        failCount++;
+                    }
+                }
+            } catch (Exception e) {
+                String errorMsg = "Exception updating threshold " + threshold.getLevelName() + ": " + e.getMessage();
+                FileLogger.error("[ThresholdService] ✗ " + errorMsg, e);
+                System.err.println("[ThresholdService] ✗ " + errorMsg);
+                e.printStackTrace();
+                failCount++;
             }
+        }
+        
+        String summaryMsg = "Update summary for " + sensorName + ": " + successCount + " succeeded, " + failCount + " failed";
+        FileLogger.info("[ThresholdService] " + summaryMsg);
+        System.out.println("[ThresholdService] " + summaryMsg);
+        System.out.println("[ThresholdService] ========================================");
+        
+        if (failCount > 0) {
+            String errorMsg = "Failed to update " + failCount + " threshold level(s) for sensor: " + sensorName;
+            FileLogger.error("[ThresholdService] " + errorMsg);
+            throw new RuntimeException(errorMsg);
+        }
+        
+        if (successCount == 0) {
+            String errorMsg = "No threshold levels were successfully updated for sensor: " + sensorName;
+            FileLogger.error("[ThresholdService] " + errorMsg);
+            throw new RuntimeException(errorMsg);
         }
     }
 }
