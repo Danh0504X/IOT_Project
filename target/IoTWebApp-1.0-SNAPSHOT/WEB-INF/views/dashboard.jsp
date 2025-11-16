@@ -453,18 +453,53 @@
                     </span>
                 </div>
                 <div id="ai-prediction-content" class="prediction-content">
-                    <!-- Placeholder: Đang tải dự đoán -->
-                    <div class="text-center py-4">
-                        <div class="mb-3">
-                            <i class="bi bi-hourglass-split" style="font-size: 2.5rem; color: rgba(148, 163, 184, 0.5);"></i>
-                        </div>
-                        <p class="text-secondary text-opacity-75 mb-0">
-                            Đang tải dự đoán...
-                        </p>
-                        <small class="text-secondary text-opacity-50">
-                            Dữ liệu dự đoán sẽ được hiển thị tại đây
-                        </small>
-                    </div>
+                    <c:choose>
+                        <c:when test="${forecastTemp != null && forecastHum != null && forecastMQ2 != null}">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="prediction-item">
+                                        <div class="prediction-label">Nhiệt độ</div>
+                                        <div class="prediction-value">${forecastTemp} °C</div>
+                                        <div class="prediction-trend stable">
+                                            <i class="bi bi-arrow-right"></i> Dự đoán 1 giờ tới
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="prediction-item">
+                                        <div class="prediction-label">Độ ẩm</div>
+                                        <div class="prediction-value">${forecastHum} %</div>
+                                        <div class="prediction-trend stable">
+                                            <i class="bi bi-arrow-right"></i> Dự đoán 1 giờ tới
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="prediction-item">
+                                        <div class="prediction-label">Nồng độ CO (MQ2)</div>
+                                        <div class="prediction-value">${forecastMQ2} ppm</div>
+                                        <div class="prediction-trend stable">
+                                            <i class="bi bi-arrow-right"></i> Dự đoán 1 giờ tới
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </c:when>
+                        <c:otherwise>
+                            <div class="text-center py-4">
+                                <div class="mb-3">
+                                    <i class="bi bi-hourglass-split" style="font-size: 2.5rem; color: rgba(148, 163, 184, 0.5);"></i>
+                                </div>
+                                <p class="text-secondary text-opacity-75 mb-0">
+                                    Đang tính toán dự đoán...
+                                </p>
+                                <small class="text-secondary text-opacity-50">
+                                    Cần ít nhất 2 bản ghi để tính dự đoán
+                                </small>
+                            </div>
+                        </c:otherwise>
+                    </c:choose>
+                </div>
                     
                     <!-- 
                     Example HTML structure for AI predictions (uncomment and modify when integrating AI):

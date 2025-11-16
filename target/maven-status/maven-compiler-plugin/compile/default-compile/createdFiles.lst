@@ -5,9 +5,11 @@ com\mycompany\iotwebapp\dao\DBConnection.class
 com\mycompany\iotwebapp\controller\DashboardServlet.class
 com\mycompany\iotwebapp\model\SensorType.class
 com\mycompany\iotwebapp\service\SensorService.class
+com\mycompany\iotwebapp\model\SensorRecord.class
 com\mycompany\iotwebapp\model\DashboardData.class
 com\mycompany\iotwebapp\dao\DeviceCommandDAO.class
 com\mycompany\iotwebapp\util\FileLogger.class
+com\mycompany\iotwebapp\controller\ForecastServlet.class
 com\mycompany\iotwebapp\model\ESP32SensorPayload.class
 com\mycompany\iotwebapp\controller\PollServlet.class
 com\mycompany\iotwebapp\dao\AQIResultDAO.class

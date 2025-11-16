@@ -12,6 +12,7 @@ F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\dao\DeviceCommandDA
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\controller\DashboardServlet.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\model\DeviceCommand.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\dao\DeviceInfoDAO.java
+F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\controller\ForecastServlet.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\dao\UserDAO.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\util\JPAUtil.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\model\AQIResult.java
@@ -20,6 +21,7 @@ F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\controller\LoginSer
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\controller\LogViewerServlet.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\model\SensorType.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\model\User.java
+F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\model\SensorRecord.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\dao\SensorDataDAO.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\model\Threshold.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\model\SensorData.java

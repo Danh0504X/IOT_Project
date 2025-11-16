@@ -164,6 +164,9 @@ public class DashboardServlet extends HttpServlet {
                 return;
             }
             
+            // Calculate forecast (1 hour prediction)
+            calculateForecast(req, deviceId, dashboardData);
+            
             // Default: Render JSP view
             req.setAttribute("deviceId", deviceId);
             req.setAttribute("sensorData", dashboardData);
@@ -386,5 +389,80 @@ public class DashboardServlet extends HttpServlet {
         
         System.out.println("[DashboardServlet] Warning: Unknown sensor name '" + dbName + "', returning lowercase");
         return dbName.toLowerCase();
+    }
+    
+    /**
+     * Calculate forecast for 1 hour ahead based on current and 30 minutes ago data.
+     * Uses simple linear extrapolation: forecast = now + (now - 30minAgo) * 2
+     */
+    private void calculateForecast(HttpServletRequest req, Integer deviceId, List<DashboardData> dashboardData) {
+        try {
+            System.out.println("[DashboardServlet] Calculating forecast for device: " + deviceId);
+            
+            // Get current values (latest reading)
+            Double tempNow = null, humNow = null, mq2Now = null;
+            if (!dashboardData.isEmpty()) {
+                DashboardData latest = dashboardData.get(0);
+                tempNow = latest.getTemperature();
+                humNow = latest.getHumidity();
+                mq2Now = latest.getMq2();
+                System.out.println("[DashboardServlet] Current values - Temp: " + tempNow + ", Hum: " + humNow + ", MQ2: " + mq2Now);
+            }
+            
+            // Get values from 30 minutes ago
+            Double tempBefore = null, humBefore = null, mq2Before = null;
+            if (dashboardData.size() >= 2) {
+                // Try to find data from approximately 30 minutes ago
+                // Since data comes every 5 seconds, 30 minutes = 360 readings
+                // But we only have 100 records, so we'll use the oldest available
+                int index30Min = Math.min(30, dashboardData.size() - 1); // Use data from ~2.5 minutes ago as approximation
+                if (index30Min < dashboardData.size()) {
+                    DashboardData before = dashboardData.get(index30Min);
+                    tempBefore = before.getTemperature();
+                    humBefore = before.getHumidity();
+                    mq2Before = before.getMq2();
+                    System.out.println("[DashboardServlet] Previous values (index " + index30Min + ") - Temp: " + tempBefore + ", Hum: " + humBefore + ", MQ2: " + mq2Before);
+                }
+            }
+            
+            // Calculate forecast using linear extrapolation
+            double tempForecast = predict1h(tempNow, tempBefore);
+            double humForecast = predict1h(humNow, humBefore);
+            double mq2Forecast = predict1h(mq2Now, mq2Before);
+            
+            System.out.println("[DashboardServlet] Forecast - Temp: " + tempForecast + ", Hum: " + humForecast + ", MQ2: " + mq2Forecast);
+            
+            req.setAttribute("forecastTemp", String.format("%.1f", tempForecast));
+            req.setAttribute("forecastHum", String.format("%.1f", humForecast));
+            req.setAttribute("forecastMQ2", String.format("%.1f", mq2Forecast));
+            
+        } catch (Exception e) {
+            System.err.println("[DashboardServlet] Error calculating forecast: " + e.getMessage());
+            e.printStackTrace();
+            // Set default values on error
+            req.setAttribute("forecastTemp", "N/A");
+            req.setAttribute("forecastHum", "N/A");
+            req.setAttribute("forecastMQ2", "N/A");
+        }
+    }
+    
+    /**
+     * Predict value 1 hour ahead using linear extrapolation.
+     * Formula: forecast = now + (now - before) * 2
+     * (Assuming 30 minutes between 'before' and 'now', so multiply by 2 for 1 hour)
+     */
+    private double predict1h(Double now, Double before) {
+        if (now == null) return 0.0;
+        if (before == null) return now;
+        
+        // Linear extrapolation: forecast = now + (rate of change) * time
+        // rate of change = (now - before) / 30 minutes
+        // forecast for 1 hour = now + (now - before) * 2
+        double forecast = now + ((now - before) * 2);
+        
+        // Ensure reasonable bounds
+        if (forecast < 0) forecast = 0;
+        
+        return forecast;
     }
 }

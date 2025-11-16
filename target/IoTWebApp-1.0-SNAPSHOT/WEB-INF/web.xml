@@ -21,7 +21,19 @@
         - GET /api/poll - PollServlet - ESP32 polls for threshold updates
         - GET /admin/thresholds - ThresholdAdminServlet - Display threshold management UI
         - POST /admin/thresholds - ThresholdAdminServlet - Update thresholds
+        - GET /dashboard - DashboardServlet - Display dashboard with sensor data and forecast
     -->
-
+    <!-- 
+        ForecastServlet is no longer needed - forecast logic is integrated into DashboardServlet
+        Keeping commented for reference:
+    <servlet>
+        <servlet-name>ForecastServlet</servlet-name>
+        <servlet-class>com.mycompany.iotwebapp.controller.ForecastServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>ForecastServlet</servlet-name>
+        <url-pattern>/forecast</url-pattern>
+    </servlet-mapping>
+    -->
 </web-app>
 
