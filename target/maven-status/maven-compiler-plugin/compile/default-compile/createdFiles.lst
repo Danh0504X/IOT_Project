@@ -7,6 +7,7 @@ com\mycompany\iotwebapp\model\SensorType.class
 com\mycompany\iotwebapp\service\SensorService.class
 com\mycompany\iotwebapp\model\SensorRecord.class
 com\mycompany\iotwebapp\model\DashboardData.class
+com\mycompany\iotwebapp\model\Alert.class
 com\mycompany\iotwebapp\dao\DeviceCommandDAO.class
 com\mycompany\iotwebapp\util\FileLogger.class
 com\mycompany\iotwebapp\controller\ForecastServlet.class

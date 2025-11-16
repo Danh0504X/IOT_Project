@@ -19,7 +19,7 @@
 
 #define FAN_PIN 18
 #define BUZZER_PIN 19
-
+  
 // ================================
 // WiFi
 // ================================
@@ -512,9 +512,9 @@ void checkThresholds(float temperature, float humidity, int mq135, int mq7, int 
   String fanReason = "";
   
   // Rule 1: AQI >= 75
-  if (aqi >= 75) {
+  if (aqi >= 100) {
     fanOn = true;
-    fanReason += "AQI>=75 ";
+    fanReason += "AQI>=100 ";
   }
   
   // Rule 2: Bất kỳ sensor nào AlertLevel >= 2 (trừ độ ẩm)
