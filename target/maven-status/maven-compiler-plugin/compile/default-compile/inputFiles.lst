@@ -2,6 +2,7 @@ F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\dao\SensorTypeDAO.j
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\controller\ThresholdAdminServlet.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\model\DeviceInfo.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\util\FileLogger.java
+F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\model\Alert.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\dao\AQIResultDAO.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\dao\ThresholdDAO.java
 F:\Downloads\IoTWebApp\src\main\java\com\mycompany\iotwebapp\service\SensorService.java

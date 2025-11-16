@@ -2,6 +2,8 @@ package com.mycompany.iotwebapp.controller;
 
 import java.io.IOException;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
@@ -18,61 +20,63 @@ public class ForecastServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
-        Double tempNow = null, tempBefore = null;
-        Double humNow = null, humBefore = null;
-        Double mq2Now = null, mq2Before = null;
-
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS)) {
 
-            // --- Lấy bản ghi mới nhất ---
-            PreparedStatement ps1 = conn.prepareStatement(
-                    "SELECT TOP 1 * FROM LatestSensorRecordsView ORDER BY Timestamp DESC"
+            // --- Lấy 10 bản ghi gần nhất ---
+            PreparedStatement ps = conn.prepareStatement(
+                    "SELECT TOP 10 * FROM LatestSensorRecordsView ORDER BY Timestamp DESC"
             );
-            ResultSet rs1 = ps1.executeQuery();
+            ResultSet rs = ps.executeQuery();
 
-            if (rs1.next()) {
-                tempNow = rs1.getDouble("Temperature");
-                humNow = rs1.getDouble("Humidity");
-                mq2Now = rs1.getDouble("MQ2");
+            List<Double> temps = new ArrayList<>();
+            List<Double> hums = new ArrayList<>();
+            List<Double> mq2s = new ArrayList<>();
+
+            while (rs.next()) {
+                temps.add(rs.getDouble("Temperature"));
+                hums.add(rs.getDouble("Humidity"));
+                mq2s.add(rs.getDouble("MQ2"));
             }
 
-            // --- Lấy bản ghi 30 phút trước ---
-            PreparedStatement ps2 = conn.prepareStatement(
-                    "SELECT TOP 1 * FROM LatestSensorRecordsView " +
-                    "WHERE Timestamp <= DATEADD(MINUTE, -30, GETDATE()) " +
-                    "ORDER BY Timestamp DESC"
-            );
-            ResultSet rs2 = ps2.executeQuery();
+            // Đảo danh sách (chronological)
+            java.util.Collections.reverse(temps);
+            java.util.Collections.reverse(hums);
+            java.util.Collections.reverse(mq2s);
 
-            if (rs2.next()) {
-                tempBefore = rs2.getDouble("Temperature");
-                humBefore = rs2.getDouble("Humidity");
-                mq2Before = rs2.getDouble("MQ2");
-            }
+            double tempForecast = predict1Hour(temps);
+            double humForecast  = predict1Hour(hums);
+            double mq2Forecast  = predict1Hour(mq2s);
+
+            req.setAttribute("forecastTemp", tempForecast);
+            req.setAttribute("forecastHum", humForecast);
+            req.setAttribute("forecastMQ2", mq2Forecast);
 
         } catch (Exception e) {
             req.setAttribute("forecastError", e.getMessage());
             e.printStackTrace();
         }
 
-        // --- TÍNH DỰ ĐOÁN 1 GIỜ TỚI ---
-        double tempForecast = predict1h(tempNow, tempBefore);
-        double humForecast = predict1h(humNow, humBefore);
-        double mq2Forecast = predict1h(mq2Now, mq2Before);
-
-        req.setAttribute("forecastTemp", tempForecast);
-        req.setAttribute("forecastHum", humForecast);
-        req.setAttribute("forecastMQ2", mq2Forecast);
-
         RequestDispatcher rd =
                 req.getRequestDispatcher("/WEB-INF/views/dashboard.jsp");
         rd.forward(req, resp);
     }
 
-    private double predict1h(Double now, Double before) {
-        if (now == null) return 0;
-        if (before == null) return now;
+    /**
+     * Dự đoán 1 giờ bằng cách tính SLOPE (độ dốc)
+     * slope = (avg(last 3) - avg(first 3)) / 0.5 giờ
+     */
+    private double predict1Hour(List<Double> values) {
+        if (values == null || values.size() < 3) return 0;
 
-        return now + ((now - before) * 2); // 30 phút × 2 = 1 giờ
+        // Tính trung bình 3 giá trị đầu và cuối
+        double startAvg = (values.get(0) + values.get(1) + values.get(2)) / 3.0;
+        double endAvg = (values.get(values.size()-1)
+                + values.get(values.size()-2)
+                + values.get(values.size()-3)) / 3.0;
+
+        double delta = endAvg - startAvg;   // thay đổi trong 30 phút
+        double slopePerHour = delta * 2;    // đổi sang 1 giờ
+
+        return endAvg + slopePerHour;
     }
 }
